@@ -1,0 +1,2876 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MathBlocks</title>
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+<script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
+
+:root {
+  --bg: #0f0f13;
+  --panel: #16161d;
+  --border: #2a2a3a;
+  --accent: #7c6dfa;
+  --accent2: #fa6d9a;
+  --accent3: #6dfacc;
+  --text: #e8e8f0;
+  --muted: #313139;
+  --log-bg: #0a0a10;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+/* ═══ MAIN MENU ═══ */
+#mainMenu {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.menu-title {
+  font-size: 52px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.menu-sub { font-size: 13px; color: #444458; margin-bottom: 52px; letter-spacing: .14em; text-transform: uppercase; }
+.mode-cards { display: flex; gap: 20px; }
+.mode-card {
+  width: 210px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+  padding: 26px 22px 22px; cursor: pointer;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+  display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden;
+}
+.mode-card::before { content:''; position:absolute; inset:0; opacity:0; transition:opacity .18s; border-radius:16px; }
+.mode-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.mode-card:hover::before { opacity: 1; }
+.mode-card.fours::before    { background: linear-gradient(135deg, rgba(124,109,250,.15), transparent); }
+.mode-card.race::before     { background: linear-gradient(135deg, rgba(250,109,154,.15), transparent); }
+.mode-card.ball::before     { background: linear-gradient(135deg, rgba(109,250,204,.15), transparent); }
+.mode-card.freeplay::before { background: linear-gradient(135deg, rgba(250,200,109,.15), transparent); }
+.mode-card.fives::before    { background: linear-gradient(135deg, rgba(250,160,50,.15), transparent); }
+.mode-card.sixes::before    { background: linear-gradient(135deg, rgba(50,200,250,.15), transparent); }
+.mode-card.parametric::before { background: linear-gradient(135deg, rgba(200,100,250,.15), transparent); }
+.mode-card.fours:hover    { border-color: var(--accent); }
+.mode-card.race:hover     { border-color: var(--accent2); }
+.mode-card.ball:hover     { border-color: var(--accent3); }
+.mode-card.freeplay:hover { border-color: #fac86d; }
+.mode-card.fives:hover    { border-color: #fa9832; }
+.mode-card.sixes:hover    { border-color: #32c8fa; }
+.mode-card.parametric:hover { border-color: #c864fa; }
+.mode-icon { font-size: 34px; }
+.mode-name { font-size: 17px; font-weight: 800; }
+.mode-card.fours    .mode-name { color: var(--accent); }
+.mode-card.race     .mode-name { color: var(--accent2); }
+.mode-card.ball     .mode-name { color: var(--accent3); }
+.mode-card.freeplay .mode-name { color: #fac86d; }
+.mode-card.fives    .mode-name { color: #fa9832; }
+.mode-card.sixes    .mode-name { color: #32c8fa; }
+.mode-card.parametric .mode-name { color: #c864fa; }
+.badge-fives    { background: rgba(250,152,50,.2); color: #fa9832; }
+.badge-sixes    { background: rgba(50,200,250,.2); color: #32c8fa; }
+.badge-parametric { background: rgba(200,100,250,.2); color: #c864fa; }
+
+/* ═══ MENU ROWS ═══ */
+.mode-cards-row { display: flex; gap: 20px; margin-bottom: 16px; justify-content: center; }
+.mode-desc { font-size: 11.5px; color: #555568; line-height: 1.65; }
+
+/* ═══ GAME SHELL ═══ */
+#gameShell { display: none; height: 100vh; flex-direction: column; }
+
+#toolbar {
+  height: 52px; display: flex; align-items: center; gap: 10px;
+  padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#toolbar .logo { font-size: 15px; font-weight: 800; letter-spacing: .04em; color: var(--text); margin-right: 6px; }
+#toolbar .logo span { color: var(--accent); }
+.mode-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 20px; margin-right: 6px;
+}
+.badge-fours    { background: rgba(124,109,250,.2); color: var(--accent); }
+.badge-race     { background: rgba(250,109,154,.2); color: var(--accent2); }
+.badge-ball     { background: rgba(109,250,204,.2); color: var(--accent3); }
+.badge-freeplay { background: rgba(250,200,109,.2); color: #fac86d; }
+.badge-fives    { background: rgba(250,152,50,.2);  color: #fa9832; }
+.badge-sixes    { background: rgba(50,200,250,.2);  color: #32c8fa; }
+.badge-parametric { background: rgba(200,100,250,.2); color: #c864fa; }
+
+.btn {
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover  { opacity: .88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-run    { background: var(--accent);  color: #fff; }
+.btn-clear  { background: var(--border);  color: var(--text); }
+.btn-check  { background: var(--accent3); color: #0a0a10; }
+.btn-next   { background: var(--accent2); color: #fff; }
+.btn-menu   { background: transparent; border: 1px solid var(--border); color: #6b6b80; font-size:11px; padding:5px 12px; }
+.spacer { flex: 1; }
+
+#mainArea { flex: 1; display: grid; overflow: hidden; min-height: 0; }
+#mainArea.layout-sandbox {
+  grid-template-columns: 440px 1fr; grid-template-rows: 1fr 160px;
+  grid-template-areas: "blocks graph" "console console";
+}
+#mainArea.layout-noGraph {
+  grid-template-columns: 420px 320px; grid-template-rows: 1fr 120px;
+  grid-template-areas: "blocks panel" "console console";
+}
+#mainArea.layout-race {
+  grid-template-columns: 340px 1fr; grid-template-rows: 1fr 110px;
+  grid-template-areas: "blocks graph" "console console";
+}
+#mainArea.layout-ball {
+  grid-template-columns: 340px 1fr; grid-template-rows: 1fr 110px;
+  grid-template-areas: "blocks graph" "console console";
+}
+
+#mainArea {
+  position: relative;
+  overflow: hidden;
+}
+/* Ensure the calculator fills its container correctly */
+#calculator {
+  width: 100%;
+  height: 100%;
+}
+
+#blocklyDiv {
+  grid-area: blocks; border-right: 1px solid var(--border);
+  background: var(--panel); height: 100%; min-height: 0;
+}
+
+#console {
+  grid-area: console; background: var(--log-bg); border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; padding: 10px 16px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+}
+#console .log-line { display: flex; gap: 10px; align-items: baseline; }
+#console .log-ts   { color: #2a2a3a; font-size: 10px; min-width: 52px; }
+
+#blocklyDiv {
+  grid-area: blocks;
+}
+#desmosContainer,
+#mainArea > div:first-child + div {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+#calculator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ═══ FOUR FOURS PANEL ═══ */
+#sidePanel {
+  grid-area: panel; background: var(--panel); border-left: 1px solid var(--border);
+  overflow: hidden; /* children handle their own scroll */
+}
+.panel-title { font-size: 17px; font-weight: 800; color: var(--accent); }
+.panel-sub   { font-size: 11.5px; color: #5a5a6e; line-height: 1.65; }
+/* ─── FOURS PANEL LAYOUT ─── */
+#sidePanel {
+  display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden;
+}
+.fours-top {
+  padding: 16px 18px 10px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.fours-search-row {
+  display: flex; gap: 8px; align-items: center; padding: 10px 18px 8px; flex-shrink: 0;
+}
+.fours-search-wrap {
+  position: relative; flex: 1;
+}
+.fours-search-wrap input {
+  width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: 6px 10px 6px 30px; outline: none;
+  transition: border-color .15s;
+}
+.fours-search-wrap input:focus { border-color: var(--accent); }
+.fours-search-wrap .search-icon {
+  position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+  color: #444458; font-size: 13px; pointer-events: none;
+}
+.fours-range-badge {
+  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  background: rgba(124,109,250,.15); color: var(--accent); cursor: pointer;
+  border: 1px solid var(--accent); white-space: nowrap; transition: background .15s;
+}
+.fours-range-badge:hover { background: rgba(124,109,250,.3); }
+
+.fours-stats {
+  padding: 0 18px 8px; font-size: 11px; color: #444458; flex-shrink: 0;
+  display: flex; gap: 14px; align-items: center;
+}
+.fours-stats .stat-val { color: var(--accent3); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.fours-stats .stat-pct { color: var(--accent2); font-weight: 700; }
+
+.fours-list-wrap {
+  flex: 1; overflow-y: auto; min-height: 0; padding: 4px 10px;
+}
+.fours-list-wrap::-webkit-scrollbar { width: 4px; }
+.fours-list-wrap::-webkit-scrollbar-track { background: transparent; }
+.fours-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Number grid inside scroll area */
+.targets-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding-bottom: 8px;
+}
+.target-box {
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 4px 6px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s, transform .1s;
+  position: relative;
+}
+.target-box:hover { border-color: #444; transform: translateY(-1px); }
+.target-box .tnum  { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1; }
+.target-box .texpr {
+  font-size: 7.5px; color: #444458; font-family: 'JetBrains Mono', monospace;
+  margin-top: 3px; min-height: 11px; word-break: break-all; line-height: 1.3;
+  max-height: 22px; overflow: hidden;
+}
+.target-box.solved { border-color: var(--accent3); background: rgba(109,250,204,.07); }
+.target-box.solved .tnum { color: var(--accent3); }
+.target-box.active { border-color: var(--accent); background: rgba(124,109,250,.12); }
+.target-box.active::after {
+  content: '▶'; position: absolute; top: 3px; right: 4px;
+  font-size: 7px; color: var(--accent); opacity: 0.7;
+}
+.target-box.hidden-by-search { display: none; }
+
+#foursFeedback {
+  font-size: 11.5px; font-family: 'JetBrains Mono', monospace;
+  min-height: 18px; padding: 6px 18px; flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+.fours-progress { font-size: 11px; color: #444458; }
+.fours-progress span { color: var(--accent3); font-weight: 700; }
+
+/* Range selector modal */
+#rangeModal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 300; align-items: center; justify-content: center;
+}
+#rangeModal.show { display: flex; }
+.range-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+  padding: 28px 32px; min-width: 320px; display: flex; flex-direction: column; gap: 16px;
+}
+.range-card h2 { font-size: 18px; font-weight: 800; color: var(--accent); }
+.range-card p { font-size: 12px; color: #5a5a6e; line-height: 1.6; }
+.range-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.range-preset {
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 700;
+  color: var(--text); transition: border-color .15s, background .15s;
+}
+.range-preset:hover { border-color: var(--accent); background: rgba(124,109,250,.1); }
+.range-custom { display: flex; gap: 8px; align-items: center; }
+.range-custom input {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; width: 70px;
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: 6px 10px; outline: none;
+}
+.range-custom input:focus { border-color: var(--accent); }
+.range-custom label { font-size: 12px; color: #5a5a6e; }
+
+/* ═══ HUD OVERLAYS ═══ */
+#raceHUD, #ballHUD {
+  display: none; position: absolute; top: 60px; right: 16px;
+  background: rgba(16,16,22,.94); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; z-index: 10; min-width: 175px; pointer-events: none;
+}
+.hud-label { color: #444458; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; margin-top: 6px; }
+.hud-label:first-child { margin-top: 0; }
+.hud-val   { font-size: 22px; font-weight: 800; line-height: 1.2; }
+.hud-status { font-size: 12px; margin-top: 4px; }
+#raceScore  { color: var(--accent2); }
+#ballSegCount { color: var(--accent3); }
+#ballStatus { font-size: 14px; color: var(--accent3); }
+
+/* ═══ BLOCKLY OVERRIDES ═══ */
+.blocklyTreeLabel {
+  color: #e8e8f0 !important; font-family: 'Syne', sans-serif !important;
+  font-size: 12px !important; font-weight: 700 !important;
+}
+.blocklyTreeRow { background: transparent !important; border-left: 3px solid transparent !important; }
+.blocklyTreeRow:hover { background: rgba(124,109,250,.12) !important; border-left: 3px solid var(--accent) !important; }
+.blocklyTreeSelected { background: rgba(124,109,250,.22) !important; border-left: 3px solid var(--accent) !important; }
+.blocklyToolboxDiv { background: #13131a !important; border-right: 1px solid #2a2a3a !important; }
+.blocklyFlyoutBackground { fill: #1a1a24 !important; }
+.blocklyScrollbarBackground { fill: transparent !important; }
+.blocklyToolboxCategory { background: transparent !important; }
+.blocklyToolboxCategory:hover { background: rgba(124,109,250,.12) !important; }
+.blocklyToolboxCategoryLabel {
+  color: #e8e8f0 !important; font-family: 'Syne', sans-serif !important;
+  font-size: 12px !important; font-weight: 700 !important;
+}
+
+/* ═══ DEV MODE ═══ */
+#devBar {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+  background: rgba(20,10,40,.96); border-top: 1px solid #7c6dfa;
+  padding: 6px 16px; display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+#devBar.show { display: flex; }
+.dev-label { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #7c6dfa; }
+.dev-sep { width: 1px; height: 18px; background: #2a2a3a; }
+.btn-dev { background: rgba(124,109,250,.25); border: 1px solid #7c6dfa; color: #7c6dfa; font-size: 11px; padding: 4px 12px; }
+.btn-dev:hover { background: rgba(124,109,250,.45); }
+.btn-devskip { background: rgba(250,109,154,.2); border: 1px solid var(--accent2); color: var(--accent2); }
+.btn-devskip:hover { background: rgba(250,109,154,.4); }
+.btn-devtoggle {
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  background: transparent; border: 1px solid #2a2a3a; color: #333;
+  transition: all .2s; position: relative;
+}
+.btn-devtoggle.active { border-color: #7c6dfa; color: #7c6dfa; background: rgba(124,109,250,.15); }
+.dev-tier-btns { display: flex; gap: 6px; align-items: center; }
+
+/* ═══ PHYSICS CANVAS ═══ */
+#physicsCanvas {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 5;
+}
+#physicsControls {
+  display: none; position: absolute; bottom: 12px; right: 12px; z-index: 20;
+  display: flex; gap: 8px;
+}
+.btn-launch { background: var(--accent3); color: #0a0a10; }
+.btn-reset-phys { background: var(--border); color: var(--text); }
+
+/* ═══ PARAMETRIC GAME ═══ */
+#mainArea.layout-parametric {
+  grid-template-columns: 360px 1fr 300px; grid-template-rows: 1fr 110px;
+  grid-template-areas: "blocks graph mathpanel" "console console console";
+}
+#mathPanel {
+  grid-area: mathpanel;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.math-panel-title {
+  padding: 14px 16px 10px; font-size: 14px; font-weight: 800; color: #c864fa;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.math-section {
+  padding: 10px 14px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.math-section-label {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #444458; margin-bottom: 6px;
+}
+.math-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.math-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555568; min-width: 80px; }
+.math-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+.math-val.good  { color: var(--accent3); }
+.math-val.warn  { color: #fac86d; }
+.math-val.bad   { color: #f87171; }
+.math-val.dim   { color: #444; }
+.math-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+.math-scroll::-webkit-scrollbar { width: 3px; }
+.math-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+.joint-card {
+  margin: 6px 10px; padding: 8px 10px; border-radius: 8px;
+  background: var(--log-bg); border: 1px solid var(--border); font-size: 11px;
+}
+.joint-card.ok { border-color: var(--accent3); }
+.joint-card.warn { border-color: #fac86d; }
+.joint-title { font-weight: 700; margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.joint-row { display: flex; justify-content: space-between; color: #666; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.joint-row span:last-child { font-weight: 700; }
+
+/* Parametric HUD */
+#parametricHUD {
+  display: none; position: absolute; top: 60px; left: 356px;
+  background: rgba(16,16,22,.94); border: 1px solid rgba(200,100,250,.4); border-radius: 12px;
+  padding: 12px 16px; z-index: 10; min-width: 180px;
+}
+.phud-row { display: flex; justify-content: space-between; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px; }
+.phud-key { color: #444458; }
+.phud-val { color: #c864fa; font-weight: 700; }
+
+/* ═══ FOURS ALIAS PANEL ═══ */
+.alias-section { margin-top: 4px; }
+.alias-title { font-size: 12px; font-weight: 700; color: var(--accent2); margin-bottom: 6px; }
+.alias-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.alias-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent3); min-width: 28px; }
+.alias-eq   { color: #444458; font-size: 11px; }
+.alias-expr { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.alias-del  { background: none; border: 1px solid #333; color: #f87171; border-radius: 4px; cursor: pointer; padding: 1px 6px; font-size: 11px; }
+#addAliasForm { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+#addAliasForm input {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); padding: 4px 8px; width: 60px;
+}
+#addAliasForm input.wide { width: 110px; }
+.btn-alias-add { background: var(--accent2); color: #fff; font-size: 11px; padding: 4px 10px; }
+
+/* ═══ TUTORIAL OVERLAY ═══ */
+#tutorialOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  z-index: 250; align-items: center; justify-content: center;
+}
+#tutorialOverlay.show { display: flex; }
+.tutorial-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+  padding: 32px 36px; max-width: 480px; width: 90%;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.tutorial-card h2 { font-size: 22px; font-weight: 800; }
+.tutorial-step {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.tutorial-step:last-of-type { border-bottom: none; }
+.tutorial-step .step-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+.tutorial-step .step-text { font-size: 12.5px; color: #aaa; line-height: 1.65; }
+.tutorial-step .step-text strong { color: var(--text); }
+
+/* ═══ TUTORIAL OVERLAY ═══ */
+#tutorialOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  z-index: 250; align-items: center; justify-content: center;
+}
+#tutorialOverlay.show { display: flex; }
+.tutorial-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+  padding: 32px 36px; max-width: 480px; width: 90%;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.tutorial-card h2 { font-size: 22px; font-weight: 800; }
+.tutorial-step {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.tutorial-step:last-of-type { border-bottom: none; }
+.tutorial-step .step-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+.tutorial-step .step-text { font-size: 12.5px; color: #aaa; line-height: 1.65; }
+.tutorial-step .step-text strong { color: var(--text); }
+
+/* ═══ WIN OVERLAY ═══ */
+#winOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(10,10,16,.88);
+  z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+#winOverlay.show { display: flex; }
+.win-title { font-size: 44px; font-weight: 800; text-align: center; }
+.win-sub   { font-size: 15px; color: #5a5a6e; text-align: center; }
+
+#calculator {
+  width: 100%;
+  height: 100%;
+}
+
+#ballCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+
+<!-- MAIN MENU -->
+<div id="mainMenu">
+  <div class="menu-title">MathBlocks</div>
+  <div class="menu-sub">Build math · Solve puzzles</div>
+  <div class="mode-cards-row">
+    <div class="mode-card fours"    onclick="startMode('fours')">
+      <div class="mode-icon">4️⃣</div>
+      <div class="mode-name">Four Fours</div>
+      <div class="mode-desc">Use exactly four 4s to build numbers from 0 to 1000.</div>
+    </div>
+    <div class="mode-card fives"    onclick="startMode('fives')">
+      <div class="mode-icon">5️⃣</div>
+      <div class="mode-name">Five Fives</div>
+      <div class="mode-desc">Use exactly five 5s to make every integer. A new digit, new challenge!</div>
+    </div>
+    <div class="mode-card sixes"    onclick="startMode('sixes')">
+      <div class="mode-icon">6️⃣</div>
+      <div class="mode-name">Six Sixes</div>
+      <div class="mode-desc">Use exactly six 6s. The hardest digit puzzle yet.</div>
+    </div>
+  </div>
+  <div class="mode-cards-row">
+    <div class="mode-card race"     onclick="startMode('race')">
+      <div class="mode-icon">🏎️</div>
+      <div class="mode-name">Race Course</div>
+      <div class="mode-desc">Define f(x) to navigate your function through a generated track.</div>
+    </div>
+    <div class="mode-card ball"     onclick="startMode('ball')">
+      <div class="mode-icon">⚽</div>
+      <div class="mode-name">Ball &amp; Goal</div>
+      <div class="mode-desc">Stack piecewise segments to guide the ball to the goal.</div>
+    </div>
+    <div class="mode-card parametric" onclick="startMode('parametric')">
+      <div class="mode-icon">🏀</div>
+      <div class="mode-name">Bounce Planner</div>
+      <div class="mode-desc">Design piecewise parametric paths. Analyze velocities &amp; derivatives at each bounce.</div>
+    </div>
+    <div class="mode-card freeplay" onclick="startMode('freeplay')">
+      <div class="mode-icon">🧮</div>
+      <div class="mode-name">Free Play</div>
+      <div class="mode-desc">Full sandbox — plot anything, animate variables, explore freely.</div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME SHELL -->
+<div id="gameShell">
+  <div id="toolbar">
+    <div class="logo">math<span>blocks</span></div>
+    <span id="modeBadge" class="mode-badge"></span>
+    <button class="btn btn-run"   id="btnRun"   onclick="runBlocks()">▶ Run</button>
+    <button class="btn btn-clear" id="btnClear" onclick="clearGraph()">✕ Clear</button>
+    <button class="btn btn-check" id="btnCheck" onclick="checkFours()" style="display:none">✓ Check</button>
+    <button class="btn btn-next"  id="btnNext"  onclick="nextLevel()"  style="display:none">Next →</button>
+    <div class="spacer"></div>
+    <button class="btn btn-menu" onclick="goMenu()">← Menu</button>
+    <button class="btn-devtoggle" id="devToggleBtn" onclick="toggleDevMode()" title="Dev Mode">⚙ DEV</button>
+  </div>
+
+  <div id="mainArea" class="layout-sandbox" style="position:relative">
+    <div id="blocklyDiv"></div>
+    <div style="position:relative; grid-area:graph;">
+        <div id="calculator"></div>
+        <canvas id="ballCanvas"></canvas>
+      </div>
+
+    <!-- Four Fours side panel -->
+    <div id="sidePanel" style="display:none">
+
+      <!-- Top header -->
+      <div class="fours-top">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="panel-title" id="foursTitle" style="margin:0">Four Fours</div>
+          <button class="fours-range-badge" id="rangeBtn" onclick="openRangeModal()">0 – 9 ▾</button>
+        </div>
+        <div class="panel-sub" id="foursSubtitle">Use <strong>exactly four 4s</strong> to make each number. Solve more to unlock new operations!</div>
+        <div id="foursTierBar" style="margin-top:6px;display:flex;gap:4px;align-items:center;font-size:10px;font-family:'JetBrains Mono',monospace">
+          <span style="color:#444458">Unlocked:</span>
+          <span id="tier0badge" style="padding:2px 7px;border-radius:10px;background:rgba(124,109,250,.25);color:var(--accent)">+ − × ÷</span>
+          <span id="tier1badge" style="padding:2px 7px;border-radius:10px;background:#1a1a24;color:#333">√ ^ n!</span>
+          <span id="tier2badge" style="padding:2px 7px;border-radius:10px;background:#1a1a24;color:#333">sin log π</span>
+          <span id="tier3badge" style="padding:2px 7px;border-radius:10px;background:#1a1a24;color:#333">Σ ∏</span>
+        </div>
+      </div>
+
+      <!-- Search + stats row -->
+      <div class="fours-search-row">
+        <div class="fours-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="foursSearch" placeholder="search numbers…" oninput="filterFoursGrid(this.value)">
+        </div>
+      </div>
+      <div class="fours-stats">
+        <span>Solved: <span class="stat-val" id="foursCount">0</span> / <span class="stat-val" id="foursTotal">10</span></span>
+        <span class="stat-pct" id="foursPct">0%</span>
+        <span style="margin-left:auto;color:#333">unsolved: <span class="stat-val" id="foursUnsolved">10</span></span>
+      </div>
+
+      <!-- Scrolling number grid -->
+      <div class="fours-list-wrap">
+        <div class="targets-grid" id="targetsGrid"></div>
+      </div>
+
+      <!-- Feedback bar -->
+      <div id="foursFeedback"></div>
+
+      <!-- Constants hint -->
+      <div style="padding:10px 18px 12px;border-top:1px solid var(--border);flex-shrink:0">
+        <div class="alias-title">📦 Constants</div>
+        <div class="panel-sub" style="font-size:10.5px;line-height:1.6">Use <strong style="color:var(--accent)">let name = …</strong> blocks in the workspace to name a sub-expression, then plug <strong style="color:var(--accent)">use name</strong> blocks into your main expression. The 4s inside the constant count toward your total of 4.</div>
+      </div>
+    </div>
+
+    <!-- Range selector modal -->
+    <div id="rangeModal">
+      <div class="range-card">
+        <h2>Set Target Range</h2>
+        <p>Choose how many numbers to solve. Higher ranges are harder — you'll need nested operations, factorials, and clever shortcuts!</p>
+        <div class="range-presets">
+          <div class="range-preset" onclick="setFoursRange(0,9)">0 – 9</div>
+          <div class="range-preset" onclick="setFoursRange(0,20)">0 – 20</div>
+          <div class="range-preset" onclick="setFoursRange(0,50)">0 – 50</div>
+          <div class="range-preset" onclick="setFoursRange(0,100)">0 – 100</div>
+          <div class="range-preset" onclick="setFoursRange(1,100)">1 – 100</div>
+          <div class="range-preset" onclick="setFoursRange(0,200)">0 – 200</div>
+          <div class="range-preset" onclick="setFoursRange(0,500)">0 – 500</div>
+          <div class="range-preset" onclick="setFoursRange(0,1000)">0 – 1000</div>
+        </div>
+        <div class="range-custom">
+          <label>Custom from</label>
+          <input type="number" id="rangeMin" value="0" min="0" max="9999">
+          <label>to</label>
+          <input type="number" id="rangeMax" value="9" min="1" max="9999">
+          <button class="btn btn-run" onclick="applyCustomRange()" style="font-size:11px;padding:5px 12px">Go</button>
+        </div>
+        <button class="btn btn-clear" onclick="closeRangeModal()" style="align-self:flex-end">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Race HUD -->
+    <div id="raceHUD">
+      <div class="hud-label">On-Track</div>
+      <div class="hud-val" id="raceScore">—</div>
+      <div class="hud-status" id="raceStatus">Plot f(x) to race!</div>
+    </div>
+
+    <!-- Ball HUD -->
+    <div id="ballHUD">
+      <div class="hud-label">Segments</div>
+      <div class="hud-val" id="ballSegCount">0</div>
+      <div class="hud-label">Status</div>
+      <div id="ballStatus">Build!</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;pointer-events:auto">
+        <button class="btn btn-launch" onclick="launchBall()" style="background:var(--accent3);color:#0a0a10">🎾 Launch</button>
+        <button class="btn btn-reset-phys" onclick="resetPhysics()" style="background:var(--border);color:var(--text)">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Parametric HUD (live ball state) -->
+    <div id="parametricHUD">
+      <div style="font-size:10px;font-weight:800;color:#c864fa;margin-bottom:4px;letter-spacing:.08em" id="phud_level">🏀 LEVEL 1</div>
+      <div id="phud_hint" style="font-size:9.5px;color:#555568;margin-bottom:8px;line-height:1.5;max-width:180px"></div>
+      <div class="phud-row"><span class="phud-key">x(t)</span><span class="phud-val" id="phud_x">—</span></div>
+      <div class="phud-row"><span class="phud-key">y(t)</span><span class="phud-val" id="phud_y">—</span></div>
+      <div class="phud-row"><span class="phud-key">vx = x′</span><span class="phud-val" id="phud_vx">—</span></div>
+      <div class="phud-row"><span class="phud-key">vy = y′</span><span class="phud-val" id="phud_vy">—</span></div>
+      <div class="phud-row"><span class="phud-key">speed</span><span class="phud-val" id="phud_spd">—</span></div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;pointer-events:auto">
+        <button class="btn btn-launch" onclick="launchParametric()" style="background:#c864fa;color:#fff;font-size:11px">🏀 Launch</button>
+        <button class="btn btn-reset-phys" onclick="resetParametric()" style="background:var(--border);color:var(--text);font-size:11px">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Math Analysis Panel (parametric mode) -->
+    <div id="mathPanel" style="display:none">
+      <div class="math-panel-title">📐 Math Analysis</div>
+      <div class="math-section">
+        <div class="math-section-label">Parametric Segments</div>
+        <div class="math-row"><span class="math-key">segments:</span><span class="math-val" id="mp_segs">0</span></div>
+        <div class="math-row"><span class="math-key">t range:</span><span class="math-val dim" id="mp_trange">—</span></div>
+      </div>
+      <div class="math-section">
+        <div class="math-section-label">At t = <input id="mp_t_input" type="number" step="0.1" value="0" style="width:52px;font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--log-bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 5px;outline:none" oninput="evalAtT(this.value)"></div>
+        <div class="math-row"><span class="math-key">x(t):</span><span class="math-val good" id="mp_xt">—</span></div>
+        <div class="math-row"><span class="math-key">y(t):</span><span class="math-val good" id="mp_yt">—</span></div>
+        <div class="math-row"><span class="math-key">x′(t) = vx:</span><span class="math-val" id="mp_dxt">—</span></div>
+        <div class="math-row"><span class="math-key">y′(t) = vy:</span><span class="math-val" id="mp_dyt">—</span></div>
+        <div class="math-row"><span class="math-key">speed |v|:</span><span class="math-val good" id="mp_spd">—</span></div>
+        <div class="math-row"><span class="math-key">x″(t) = ax:</span><span class="math-val dim" id="mp_d2x">—</span></div>
+        <div class="math-row"><span class="math-key">y″(t) = ay:</span><span class="math-val dim" id="mp_d2y">—</span></div>
+        <div class="math-row"><span class="math-key">curvature κ:</span><span class="math-val dim" id="mp_kappa">—</span></div>
+        <div class="math-row"><span class="math-key">dy/dx:</span><span class="math-val" id="mp_dydx">—</span></div>
+        <div class="math-row"><span class="math-key">angle:</span><span class="math-val dim" id="mp_ang">—</span></div>
+      </div>
+      <div class="math-section" style="flex-shrink:0">
+        <div class="math-section-label">Segment Joints (Continuity)</div>
+        <div id="mp_joints_info" style="font-size:10px;color:#444;font-style:italic">Run blocks first</div>
+      </div>
+      <div class="math-scroll" id="mp_joints_list"></div>
+    </div>
+
+    <!-- Physics canvas (ball mode) -->
+    <canvas id="physicsCanvas" style="display:none;position:absolute;top:0;left:0;pointer-events:none;z-index:5"></canvas>
+  </div>
+  <div id="console"></div>
+</div>
+
+<!-- TUTORIAL OVERLAY -->
+<div id="tutorialOverlay">
+  <div class="tutorial-card" id="tutorialCard">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<!-- DEV MODE BAR -->
+<div id="devBar">
+  <span class="dev-label">⚙ Dev Mode</span>
+  <div class="dev-sep"></div>
+  <!-- Four Fours controls -->
+  <span id="devFoursSection" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:10px;color:#555568">FOUR FOURS:</span>
+    <div class="dev-tier-btns">
+      <button class="btn btn-dev" onclick="devUnlockTier(1)">Unlock Tier 1</button>
+      <button class="btn btn-dev" onclick="devUnlockTier(2)">Unlock Tier 2</button>
+      <button class="btn btn-dev" onclick="devUnlockTier(3)">Unlock All Tiers</button>
+    </div>
+    <div class="dev-sep"></div>
+    <button class="btn btn-dev" onclick="devSolveAll()">Auto-Solve Range</button>
+    <button class="btn btn-dev" onclick="devExpandRange()">Expand → 0–1000</button>
+  </span>
+  <!-- Race controls -->
+  <span id="devRaceSection" style="display:none;align-items:center;gap:8px">
+    <span style="font-size:10px;color:#555568">RACE:</span>
+    <button class="btn btn-devskip" onclick="devSkipLevel()">Skip Level →</button>
+    <button class="btn btn-dev" onclick="devGotoRaceLevel()">Go to Level #<span id="devRaceLevelInput"></span></button>
+    <select id="devRaceLevelSel" style="background:var(--log-bg);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:3px 6px;border-radius:5px"></select>
+  </span>
+  <!-- Ball controls -->
+  <span id="devBallSection" style="display:none;align-items:center;gap:8px">
+    <span style="font-size:10px;color:#555568">BALL:</span>
+    <button class="btn btn-devskip" onclick="devSkipLevel()">Skip Level →</button>
+    <select id="devBallLevelSel" style="background:var(--log-bg);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:3px 6px;border-radius:5px" onchange="devJumpBallLevel(this.value)"></select>
+  </span>
+  <!-- Parametric controls -->
+  <span id="devParamSection" style="display:none;align-items:center;gap:8px">
+    <span style="font-size:10px;color:#555568">BOUNCE:</span>
+    <button class="btn btn-devskip" onclick="devSkipParamLevel()">Skip Level →</button>
+    <select id="devParamLevelSel" style="background:var(--log-bg);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:3px 6px;border-radius:5px" onchange="devJumpParamLevel(parseInt(this.value))"></select>
+  </span>
+</div>
+
+<!-- WIN OVERLAY -->
+<div id="winOverlay">
+  <div class="win-title" id="winTitle">🎉 You Win!</div>
+  <div class="win-sub"   id="winSub"></div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button class="btn btn-run"  onclick="restartMode()">Play Again</button>
+    <button class="btn btn-menu" onclick="goMenu();closeWin()">← Menu</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let currentMode = null;
+let calc = null;
+let workspace = null;
+let animationIntervals = [];
+let userFunctions = {};
+let userLists = {};
+let exprIdMap = {};
+
+let foursTargets = {};       // n -> latex string or null
+let foursRangeMin = 0;
+let foursRangeMax = 9;
+let foursAliases = {};      // name -> {latex, foursCount, value}
+let foursDigit = 4;         // 4, 5, or 6
+let foursCount = 4;         // how many digits required
+
+let raceLevel = 1;
+let ballLevel = 1;
+let parametricLevel = 1;
+
+// Parametric bounce state
+let paramSegments = [];    // {xfn, yfn, dxfn, dyfn, tmin, tmax}
+let paramBall = null;      // {x, y, vx, vy, t, seg}
+let paramRunning = false;
+let paramRAF = null;
+let paramLastTime = 0;
+let paramGoal = {x:0,y:0};
+let paramGoalR = 0.3;
+
+let physicsRunning = false;
+let physicsRAF = null;
+let ballState = null;          // {x, y, vx, vy, radius}
+let goalPos = { x: 4, y: 1.8 };
+let goalRadius = 0.35;
+let segments = [];             // {fn, dfn, xmin, xmax}
+let lastTimestamp = 0;
+let rotationAngle = 0;         // for the radius line
+
+let resizeHandler = null;
+
+// Store Desmos expression IDs for dynamic updates
+let dynamicExpressions = {
+  ballFill: null,
+  ballOutline: null,
+  radiusLine: null
+};
+
+function safeRemoveExpression(id) {
+  if (calc && calc.removeExpression && typeof id === 'string') {
+    try {
+      calc.removeExpression({ id: id });
+    } catch (e) {
+      // Expression may already be removed; ignore
+    }
+  }
+}
+
+function stableId(n) { if (!exprIdMap[n]) exprIdMap[n] = "expr_" + n; return exprIdMap[n]; }
+
+// ═══════════════════════════════════════════════════════
+//  LOGGING
+// ═══════════════════════════════════════════════════════
+function log(msg, color) {
+  color = color || "var(--text)";
+  const div = document.getElementById('console');
+  const line = document.createElement("div"); line.className = "log-line";
+  const ts = document.createElement("span");  ts.className = "log-ts";
+  const now = new Date();
+  ts.textContent = now.toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const txt = document.createElement("span"); txt.style.color = color; txt.textContent = msg;
+  line.appendChild(ts); line.appendChild(txt);
+  div.appendChild(line); div.scrollTop = div.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════
+function clearGraph() {
+  animationIntervals.forEach(i => clearInterval(i));
+  animationIntervals = [];
+
+  if (calc) {
+    const all = calc.getExpressions();
+    calc.removeExpressions(all);
+    // Remove dynamic ball expressions safely
+    safeRemoveExpression(dynamicExpressions.ballFill);
+    safeRemoveExpression(dynamicExpressions.ballOutline);
+    safeRemoveExpression(dynamicExpressions.radiusLine);
+  }
+
+  document.getElementById('console').innerHTML = "";
+  userFunctions = {};
+  userLists = {};
+  exprIdMap = {};
+  dynamicExpressions = { ballFill: null, ballOutline: null, radiusLine: null };
+
+  if (currentMode === 'race') drawRaceTrack();
+  if (currentMode === 'ball') drawBallLevel();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARSE EXPRESSION
+// ═══════════════════════════════════════════════════════
+function parseExpr(block) {
+  if (!block) return "0";
+  switch (block.type) {
+    case "num":         return block.getFieldValue("N") || "0";
+    case "var_get":     return block.getField("VAR").getText();
+    case "t_var":       return "t";
+    case "pi":          return "\\pi";
+    case "e_const":     return "e";
+    case "fours_four":  return "4";
+    // ── Dynamic digit blocks ──────────────────────────────────────────
+    case "digit_single": { const d=foursDigit; return String(d); }
+    case "digit_double": { const d=foursDigit; return String(d)+String(d); }
+    case "digit_triple": { const d=foursDigit; return String(d)+String(d)+String(d); }
+    case "digit_quad":   { const d=foursDigit; return String(d)+String(d)+String(d)+String(d); }
+    case "digit_p1":     { const d=foursDigit; return "0."+String(d); }
+    case "digit_p2":     { const d=foursDigit; return "0."+String(d)+String(d); }
+    case "digit_fact":   { const d=foursDigit; return "\\left("+String(d)+"\\right)!"; }
+    case "neg":         return "(-" + parseExpr(block.getInputTargetBlock("A")) + ")";
+    case "add":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "+" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "sub":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "-" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "mul":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "*" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "div":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "/" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "pow":         return "(" + parseExpr(block.getInputTargetBlock("BASE")) + "^{" + parseExpr(block.getInputTargetBlock("EXP")) + "})";
+    case "abs":         return "\\left|" + parseExpr(block.getInputTargetBlock("A")) + "\\right|";
+    case "sqrt":        return "\\sqrt{" + parseExpr(block.getInputTargetBlock("A")) + "}";
+    case "exp":         return "e^{" + parseExpr(block.getInputTargetBlock("EXP")) + "}";
+    case "func": {
+      const fn = block.getField("FUNC").getText();
+      const arg = parseExpr(block.getInputTargetBlock("ARG"));
+      const trig = ["sin","cos","tan","sec","csc","cot","arcsin","arccos","arctan"];
+      if (trig.includes(fn)) return "\\" + fn + "\\left(" + arg + "\\right)";
+      if (fn === "ln")  return "\\ln\\left("  + arg + "\\right)";
+      if (fn === "log") return "\\log\\left(" + arg + "\\right)";
+      return "\\" + fn + "\\left(" + arg + "\\right)";
+    }
+    case "sum": {
+      const v = block.getField("VAR").getText();
+      return "\\sum_{" + v + "=" + parseExpr(block.getInputTargetBlock("FROM")) + "}^{" + parseExpr(block.getInputTargetBlock("TO")) + "}" + parseExpr(block.getInputTargetBlock("EXPR"));
+    }
+    case "prod": {
+      const v = block.getField("VAR").getText();
+      return "\\prod_{" + v + "=" + parseExpr(block.getInputTargetBlock("FROM")) + "}^{" + parseExpr(block.getInputTargetBlock("TO")) + "}" + parseExpr(block.getInputTargetBlock("EXPR"));
+    }
+    case "list_2":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "]";
+    case "list_3":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "," + parseExpr(block.getInputTargetBlock("C")) + "]";
+    case "list_4":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "," + parseExpr(block.getInputTargetBlock("C")) + "," + parseExpr(block.getInputTargetBlock("D")) + "]";
+    case "list_range": return "[" + parseExpr(block.getInputTargetBlock("FROM")) + ",...," + parseExpr(block.getInputTargetBlock("TO")) + "]";
+    case "list_get":  return block.getField("LIST").getText() + "[" + parseExpr(block.getInputTargetBlock("INDEX")) + "]";
+    case "user_func_call": return block.getField("FUNCNAME").getText() + "\\left(" + parseExpr(block.getInputTargetBlock("ARG")) + "\\right)";
+    case "fours_const_get": {
+      const cname = block.getField("NAME").getText().trim();
+      if (foursAliases[cname]) return foursAliases[cname].latex;
+      log("Constant '"+cname+"' not defined — add a 'let' block for it.", "#f97316");
+      return "0";
+    }
+    // ── New math blocks ───────────────────────────────────────────────
+    case "factorial": return "\\left(" + parseExpr(block.getInputTargetBlock("A")) + "\\right)!";
+    case "logbase": {
+      const base = parseExpr(block.getInputTargetBlock("BASE"));
+      const arg  = parseExpr(block.getInputTargetBlock("ARG"));
+      return "\\log_{" + base + "}\\left(" + arg + "\\right)";
+    }
+    case "nthroot": {
+      const n = parseExpr(block.getInputTargetBlock("N"));
+      const a = parseExpr(block.getInputTargetBlock("A"));
+      return "\\sqrt[" + n + "]{" + a + "}";
+    }
+    case "mod": return "\\operatorname{mod}\\left(" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "\\right)";
+    // ── Four Fours specials ───────────────────────────────────────────
+    case "fours_44":   return "44";
+    case "fours_444":  return "444";
+    case "fours_4444": return "4444";
+    case "fours_p4":   return "0.4";
+    case "fours_p44":  return "0.44";
+    case "fours_4f":   return "\\left(4\\right)!";
+    // ── List operations ───────────────────────────────────────────────
+    case "list_length": return "\\operatorname{length}\\left(" + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_sum":    return "\\operatorname{total}\\left("  + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_min":    return "\\min\\left("   + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_max":    return "\\max\\left("   + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_mean":   return "\\operatorname{mean}\\left(" + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_sort":   return "\\operatorname{sort}\\left(" + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    case "list_unique": return "\\operatorname{unique}\\left(" + parseExpr(block.getInputTargetBlock("L")) + "\\right)";
+    // ── Plot blocks handled in runBlocks, not here ────────────────────
+    default:
+      log("Unknown block: " + block.type, "#f97316"); return "0";
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RUN BLOCKS
+// ═══════════════════════════════════════════════════════
+function runBlocks() {
+  // Simulate clicking Clear first — full wipe, then redraw level UI
+  clearGraph();
+
+  const tops = workspace.getTopBlocks(true);
+  for (const b of tops) {
+    try {
+      switch (b.type) {
+        case "plot_y":  { const e = parseExpr(b.getInputTargetBlock("E")); log("plot y="+e,"#7c6dfa"); calc.setExpression({latex:"y="+e}); break; }
+        case "plot_x":  { const e = parseExpr(b.getInputTargetBlock("E")); log("plot x="+e,"#7c6dfa"); calc.setExpression({latex:"x="+e}); break; }
+        case "plot_implicit": { const e = parseExpr(b.getInputTargetBlock("E")); log("plot "+e+"=0","#7c6dfa"); calc.setExpression({latex:e+"=0"}); break; }
+        case "plot_polar":    { const e = parseExpr(b.getInputTargetBlock("E")); log("polar r="+e,"#7c6dfa"); calc.setExpression({latex:"r="+e}); break; }
+        case "plot_parametric": {
+          const xe = parseExpr(b.getInputTargetBlock("X")), ye = parseExpr(b.getInputTargetBlock("Y"));
+          log("param ("+xe+","+ye+")","#7c6dfa"); calc.setExpression({latex:"("+xe+","+ye+")"});
+          break;
+        }
+        case "var_set": {
+          const nm = b.getField("VAR").getText(), val = parseExpr(b.getInputTargetBlock("VAL"));
+          log("set "+nm+"="+val,"#6dfacc");
+          if (val.startsWith("[")) userLists[nm] = val;
+          calc.setExpression({id:stableId(nm), latex:nm+"="+val});
+          break;
+        }
+        case "animate": {
+          const vn = b.getField("VAR").getText(), fr = Number(b.getField("FROM").getText()), to = Number(b.getField("TO").getText()), st = Number(b.getField("STEPS").getText());
+          const aid = stableId(vn);
+          calc.setExpression({id:aid, latex:vn+"="+fr});
+          let step=0;
+          const iv = setInterval(()=>{ const v=fr+(to-fr)*(step/st); calc.setExpression({id:aid,latex:vn+"="+v}); step++; if(step>st) step=0; },50);
+          animationIntervals.push(iv);
+          log("animate "+vn,"#c084fc");
+          break;
+        }
+        case "func_def": {
+          const fn = b.getField("FUNCNAME").getText(), arg = b.getField("ARG").getText(), fe = parseExpr(b.getInputTargetBlock("VAL"));
+          userFunctions[fn] = {arg,fe};
+          log("define "+fn+"("+arg+")="+fe,"#6dfacc");
+          calc.setExpression({id:stableId(fn), latex:fn+"\\left("+arg+"\\right)="+fe});
+          break;
+        }
+        // Race
+        case "race_plot": {
+          const e = parseExpr(b.getInputTargetBlock("E"));
+          log("f(x)="+e,"#fa6d9a");
+          calc.setExpression({id:"player_fn", latex:"f\\left(x\\right)="+e, color:"#fa6d9a", lineWidth:3});
+          checkRaceScore(e);
+          break;
+        }
+        // Ball piecewise
+        case "piecewise": {
+          const e = parseExpr(b.getInputTargetBlock("EXPR"));
+          const xmin = b.getFieldValue("XMIN"), xmax = b.getFieldValue("XMAX");
+          const latex = "y="+e+"\\left\\{"+xmin+"\\le x\\le"+xmax+"\\right\\}";
+          log("segment "+latex,"#6dfacc");
+          calc.setExpression({latex, color:"#6dfacc", lineWidth:3});
+          break;
+        }
+        // Parametric segment
+        case "param_segment": {
+          const xt = parseExpr(b.getInputTargetBlock("XT"));
+          const yt = parseExpr(b.getInputTargetBlock("YT"));
+          const tmin = b.getFieldValue("TMIN"), tmax = b.getFieldValue("TMAX");
+          const latex = `(${xt},${yt})`;
+          log(`param seg (${xt}, ${yt}) t∈[${tmin},${tmax}]`, "#c864fa");
+          calc.setExpression({latex, color:"#c864fa", lineWidth:3});
+          break;
+        }
+        // New plot blocks
+        case "plot_ineq_le": { const e=parseExpr(b.getInputTargetBlock("E")); log("shade y≤"+e,"#7c6dfa"); calc.setExpression({latex:"y\\le "+e}); break; }
+        case "plot_ineq_ge": { const e=parseExpr(b.getInputTargetBlock("E")); log("shade y≥"+e,"#7c6dfa"); calc.setExpression({latex:"y\\ge "+e}); break; }
+        case "plot_point":   { const x=parseExpr(b.getInputTargetBlock("X")), y=parseExpr(b.getInputTargetBlock("Y")); log("point ("+x+","+y+")","#7c6dfa"); calc.setExpression({latex:"("+x+","+y+")"}); break; }
+      }
+    } catch(e) { log("Error: "+e.message,"#f87171"); }
+  }
+  if (currentMode === 'ball') {
+    buildPhysicsSegments();
+    const st = document.getElementById('ballStatus');
+    st.textContent = segments.length > 0 ? "Curves updated. Press Launch!" : "Add piecewise curves!";
+    st.style.color = segments.length > 0 ? "#fac86d" : "#6dfacc";
+  }
+  if (currentMode === 'parametric') {
+    buildParamSegments();
+    updateMathPanel();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LATEX → JS (for numeric evaluation)
+// ═══════════════════════════════════════════════════════
+// Helper: gamma function (for factorial of non-integers)
+function _gamma(n) {
+  if (n < 0.5) return Math.PI / (Math.sin(Math.PI*n) * _gamma(1-n));
+  n -= 1;
+  let x = 0.99999999999980993;
+  const c = [676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  for (let i=0;i<8;i++) x += c[i]/(n+i+1);
+  const t = n + 7.5;
+  return Math.sqrt(2*Math.PI) * Math.pow(t, n+0.5) * Math.exp(-t) * x;
+}
+function _factorial(n) {
+  if (n < 0) return NaN;
+  if (n <= 1) return 1;
+  if (Number.isInteger(n) && n <= 170) { let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+  return _gamma(n+1);
+}
+
+function latexToJS(s) {
+  return s
+    .replace(/\\pi/g,    'Math.PI')
+    // factorial: (expr)!
+    .replace(/\\left\(([^)]+)\\right\)!/g, '_factorial($1)')
+    // nthroot: \sqrt[n]{x} => Math.pow(x, 1/n)
+    .replace(/\\sqrt\[([^\]]+)\]\{([^}]+)\}/g, 'Math.pow($2,1/($1))')
+    .replace(/\\sqrt\{([^}]+)\}/g, 'Math.sqrt($1)')
+    // logbase: \log_{base}\left(arg\right)
+    .replace(/\\log_\{([^}]+)\}\\left\(([^)]+)\\right\)/g, '(Math.log($2)/Math.log($1))')
+    .replace(/\\ln\\left\(([^)]+)\\right\)/g,   'Math.log($1)')
+    .replace(/\\log\\left\(([^)]+)\\right\)/g,  'Math.log10($1)')
+    // mod
+    .replace(/\\operatorname\{mod\}\\left\(([^,]+),([^)]+)\\right\)/g, '(($1)%($2))')
+    .replace(/\\left\|([^|]+)\\right\|/g,        'Math.abs($1)')
+    .replace(/\\sin\\left\(([^)]+)\\right\)/g,   'Math.sin($1)')
+    .replace(/\\cos\\left\(([^)]+)\\right\)/g,   'Math.cos($1)')
+    .replace(/\\tan\\left\(([^)]+)\\right\)/g,   'Math.tan($1)')
+    .replace(/\\arcsin\\left\(([^)]+)\\right\)/g,'Math.asin($1)')
+    .replace(/\\arccos\\left\(([^)]+)\\right\)/g,'Math.acos($1)')
+    .replace(/\\arctan\\left\(([^)]+)\\right\)/g,'Math.atan($1)')
+    .replace(/\\floor\\left\(([^)]+)\\right\)/g, 'Math.floor($1)')
+    .replace(/\\ceil\\left\(([^)]+)\\right\)/g,  'Math.ceil($1)')
+    .replace(/\\round\\left\(([^)]+)\\right\)/g, 'Math.round($1)')
+    .replace(/\^\{([^}]+)\}/g, '**($1)')
+    .replace(/\^/g, '**')
+    .replace(/e\b/g, 'Math.E');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FOUR FOURS – RANGE / GRID / SEARCH / CHECK
+// ═══════════════════════════════════════════════════════
+function initFoursTargets() {
+  foursTargets = {};
+  for (let i = foursRangeMin; i <= foursRangeMax; i++) foursTargets[i] = null;
+}
+
+function buildFoursGrid(mode) {
+  // Update foursDigit/foursCount if mode specified
+  if (mode === 'fives') { foursDigit = 5; foursCount = 5; }
+  else if (mode === 'sixes') { foursDigit = 6; foursCount = 6; }
+  else { foursDigit = 4; foursCount = 4; }
+
+  // Update panel title
+  const titleEl = document.getElementById('foursTitle');
+  const subEl = document.getElementById('foursSubtitle');
+  if (titleEl) {
+    const names = {4:'Four Fours', 5:'Five Fives', 6:'Six Sixes'};
+    titleEl.textContent = names[foursDigit] || 'Four Fours';
+    titleEl.style.color = foursDigit===5 ? '#fa9832' : foursDigit===6 ? '#32c8fa' : 'var(--accent)';
+  }
+  if (subEl) {
+    subEl.innerHTML = `Use <strong>exactly ${foursCount} ${foursDigit}s</strong> to make each number. Solve more to unlock new operations!`;
+  }
+
+  const grid = document.getElementById('targetsGrid');
+  grid.innerHTML = '';
+  const total = foursRangeMax - foursRangeMin + 1;
+  let solved = 0;
+
+  for (let i = foursRangeMin; i <= foursRangeMax; i++) {
+    const isSolved = foursTargets[i] !== null;
+    if (isSolved) solved++;
+    const box = document.createElement('div');
+    box.className = 'target-box' + (isSolved ? ' solved' : '');
+    box.id = 'tbox_' + i;
+    box.dataset.num = i;
+    // Click to jump to a target
+    box.onclick = () => { foursJumpTo(i); };
+    const expr = foursTargets[i] || '';
+    box.innerHTML = '<div class="tnum">'+i+'</div><div class="texpr" title="'+expr+'">'+expr+'</div>';
+    grid.appendChild(box);
+  }
+
+  // Stats
+  document.getElementById('foursCount').textContent = solved;
+  document.getElementById('foursTotal').textContent = total;
+  document.getElementById('foursUnsolved').textContent = total - solved;
+  const pct = total > 0 ? Math.round(solved/total*100) : 0;
+  document.getElementById('foursPct').textContent = pct + '%';
+
+  // Update range badge
+  document.getElementById('rangeBtn').textContent = foursRangeMin + ' – ' + foursRangeMax + ' ▾';
+
+  // Re-apply search filter
+  const q = document.getElementById('foursSearch').value;
+  if (q) filterFoursGrid(q);
+
+  if (solved === total) {
+    // Progressive range expansion: 0-9 → 0-19 → 0-49 → 0-99 → 0-199 → 0-499 → 0-999 → 0-1000 (final)
+    const stages = [9, 19, 49, 99, 199, 499, 999, 1000];
+    const nextStage = stages.find(s => s > foursRangeMax);
+    if (nextStage !== undefined && foursRangeMax < 1000) {
+      // Carry over already-solved targets before expanding
+      const prevTargets = Object.assign({}, foursTargets);
+      foursRangeMin = 0;
+      foursRangeMax = nextStage;
+      initFoursTargets();
+      // Restore solved entries that fall in the new range
+      for (const k in prevTargets) {
+        const n = parseInt(k);
+        if (prevTargets[k] !== null && n >= foursRangeMin && n <= foursRangeMax) {
+          foursTargets[n] = prevTargets[k];
+        }
+      }
+      const fb = document.getElementById('foursFeedback');
+      fb.style.color = '#fac86d';
+      fb.textContent = `🎉 Range cleared! Expanding to 0 – ${nextStage} — keep going!`;
+      document.getElementById('rangeBtn').textContent = foursRangeMin + ' – ' + foursRangeMax + ' ▾';
+      buildFoursGrid(); // rebuild with new range (won't loop: not all solved)
+      checkFoursTierUnlock(); // recheck tiers against new (larger) total
+    } else {
+      showWin('🎉 Range Complete!', `You solved every number from ${foursRangeMin} to ${foursRangeMax} with ${foursCount} ${foursDigit}s!`);
+    }
+  } else {
+    checkFoursTierUnlock();
+  }
+}
+
+function foursJumpTo(n) {
+  // Highlight the clicked box briefly
+  document.querySelectorAll('.target-box.active').forEach(b => b.classList.remove('active'));
+  const box = document.getElementById('tbox_' + n);
+  if (box) {
+    box.classList.add('active');
+    box.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  const fb = document.getElementById('foursFeedback');
+  if (foursTargets[n] !== null) {
+    fb.style.color = '#6dfacc'; fb.textContent = '✓ '+n+' solved: '+foursTargets[n];
+  } else {
+    fb.style.color = '#7c6dfa'; fb.textContent = 'Targeting '+n+' — build an expression!';
+  }
+}
+
+function filterFoursGrid(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('.target-box').forEach(box => {
+    const n = parseInt(box.dataset.num);
+    const show = !q || String(n).includes(q) ||
+      (q === 'solved'   && foursTargets[n] !== null) ||
+      (q === 'unsolved' && foursTargets[n] === null) ||
+      (q === '?'        && foursTargets[n] === null);
+    box.classList.toggle('hidden-by-search', !show);
+  });
+}
+
+function countFoursInLatex(latex) {
+  // Count occurrences of the active digit character in the expression
+  const d = String(foursDigit);
+  return (latex.match(new RegExp(d, 'g'))||[]).length;
+}
+
+function checkFours() {
+  const fb = document.getElementById('foursFeedback');
+  const tops = workspace.getTopBlocks(true);
+  if (tops.length === 0) {
+    fb.style.color = "#f87171";
+    fb.textContent = "No blocks in workspace!";
+    return;
+  }
+
+  // Step 1: collect all constant definitions (let blocks)
+  foursAliases = {};
+  const defBlocks = tops.filter(b => b.type === 'fours_const_def');
+  for (const b of defBlocks) {
+    const name = b.getField("NAME").getText().trim();
+    if (!name) continue;
+    const valLatex = parseExpr(b.getInputTargetBlock("VAL"));
+    let val = NaN;
+    try { val = Function('"use strict"; return (' + latexToJS(valLatex) + ')')(); } catch(e) {}
+    if (!isFinite(val)) {
+      fb.style.color = "#f87171";
+      fb.textContent = "Constant '" + name + "' can't be evaluated.";
+      return;
+    }
+    foursAliases[name] = { latex: valLatex, foursCount: countFoursInLatex(valLatex), value: val };
+  }
+
+  // Step 2: find all non‑definition blocks (main expressions)
+  const exprBlocks = tops.filter(b => b.type !== 'fours_const_def');
+  if (exprBlocks.length === 0) {
+    fb.style.color = "#f87171";
+    fb.textContent = "Add at least one main expression (not just constants)!";
+    return;
+  }
+
+  let solvedCount = 0;
+  let messages = [];
+
+  // Step 3: process each main expression
+  for (const block of exprBlocks) {
+    const latex = parseExpr(block);
+    const nFours = countFoursInLatex(latex);
+    if (nFours !== foursCount) {
+      messages.push(`⚠️ Expression uses ${nFours} ${foursDigit}s (need exactly ${foursCount}).`);
+      continue;
+    }
+
+    let val = NaN;
+    try { val = Function('"use strict"; return (' + latexToJS(latex) + ')')(); } catch(e) {}
+    if (!isFinite(val)) {
+      messages.push(`❌ Expression can't be evaluated.`);
+      continue;
+    }
+
+    const rounded = Math.round(val * 1e6) / 1e6;
+    const asInt = Math.round(rounded);
+    if (Math.abs(rounded - asInt) > 1e-4) {
+      messages.push(`❌ = ${rounded.toPrecision(6)} — not an integer.`);
+      continue;
+    }
+    if (asInt < foursRangeMin || asInt > foursRangeMax) {
+      messages.push(`❌ = ${asInt} — outside range ${foursRangeMin}–${foursRangeMax}.`);
+      continue;
+    }
+    if (foursTargets[asInt] !== null) {
+      messages.push(`✓ ${asInt} already solved (expression is valid but no new slot).`);
+      continue;
+    }
+
+    // New solution!
+    foursTargets[asInt] = latex;
+    solvedCount++;
+    messages.push(`🎉 ${asInt} = ${rounded} — solved!`);
+  }
+
+  // Step 4: refresh UI
+  if (solvedCount > 0) {
+    buildFoursGrid();               // updates the whole grid
+    const solvedBox = document.getElementById('tbox_' + asInt); // last solved number
+    if (solvedBox) solvedBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Show a summary message
+  fb.style.color = solvedCount ? "#6dfacc" : "#f97316";
+  fb.textContent = messages.join(' ') || "No valid expression found.";
+}
+
+function updateDigitBlockLabels(d) {
+  // Update the Blockly block definitions to show the correct digit
+  const defs = [
+    {type:'digit_single', msg:`${d}`},
+    {type:'digit_double', msg:`${d}${d}`},
+    {type:'digit_triple', msg:`${d}${d}${d}`},
+    {type:'digit_quad',   msg:`${d}${d}${d}${d}`},
+    {type:'digit_p1',     msg:`.${d}`},
+    {type:'digit_p2',     msg:`.${d}${d}`},
+    {type:'digit_fact',   msg:`${d}!`},
+  ];
+  defs.forEach(({type, msg}) => {
+    if (Blockly.Blocks[type]) {
+      Blockly.Blocks[type].init = function() {
+        this.appendDummyInput().appendField(msg);
+        this.setOutput(true, null);
+        this.setColour(55);
+        this.setTooltip(`The digit ${d} — counts as one ${d}`);
+      };
+    }
+  });
+}
+
+// ─── Range modal ───
+function openRangeModal() {
+  document.getElementById('rangeMin').value = foursRangeMin;
+  document.getElementById('rangeMax').value = foursRangeMax;
+  document.getElementById('rangeModal').classList.add('show');
+}
+function closeRangeModal() { document.getElementById('rangeModal').classList.remove('show'); }
+
+function setFoursRange(min, max) {
+  foursRangeMin = min;
+  foursRangeMax = max;
+  initFoursTargets();          // reset all targets in the new range
+  buildFoursGrid();            // rebuild the grid
+  // Remove any active highlight from previous selection
+  document.querySelectorAll('.target-box.active').forEach(b => b.classList.remove('active'));
+  closeRangeModal();           // close the modal
+  document.getElementById('foursFeedback').textContent = '';
+  document.getElementById('foursSearch').value = '';  // clear search
+}
+
+function applyCustomRange() {
+  const min = parseInt(document.getElementById('rangeMin').value) || 0;
+  const max = parseInt(document.getElementById('rangeMax').value) || 9;
+  if (max <= min || max - min > 1000) {
+    alert('Range must be valid and at most 1001 numbers wide.'); return;
+  }
+  setFoursRange(Math.max(0,min), max);
+}
+
+// (alias capture UI removed — constants are now defined via 'let' blocks in the workspace)
+
+// ═══════════════════════════════════════════════════════
+//  RACE COURSE
+// ═══════════════════════════════════════════════════════
+const RACE_LEVELS = [
+  { label:"Level 1", latex:"\\sin\\left(x\\right)",                              fn:x=>Math.sin(x),           xMin:-5, xMax:5, band:1.5 },
+  { label:"Level 2", latex:"(0.3*x^{2}-2)",                                      fn:x=>0.3*x*x-2,            xMin:-4, xMax:4, band:1.2 },
+  { label:"Level 3", latex:"\\cos\\left(2x\\right)+\\sin\\left(x\\right)",       fn:x=>Math.cos(2*x)+Math.sin(x), xMin:-4, xMax:4, band:1.0 },
+  { label:"Level 4", latex:"(x/2)+\\sin\\left(3x\\right)",                       fn:x=>x/2+Math.sin(3*x),    xMin:-3, xMax:3, band:0.9 },
+];
+
+function drawRaceTrack() {
+  if (!calc) return;
+  const lv = RACE_LEVELS[(raceLevel-1) % RACE_LEVELS.length];
+  const b = lv.band;
+  calc.setExpression({id:"track_upper", latex:"y="+lv.latex+"+"+b, color:"#fa6d9a", lineStyle:"DASHED", lineWidth:2});
+  calc.setExpression({id:"track_lower", latex:"y="+lv.latex+"-"+b, color:"#fa6d9a", lineStyle:"DASHED", lineWidth:2});
+  calc.setExpression({id:"track_fill",  latex:lv.latex+"-"+b+"\\le y\\le"+lv.latex+"+"+b, color:"#fa6d9a"});
+  calc.setExpression({id:"track_start", latex:"x="+lv.xMin, color:"#6dfacc", lineWidth:2});
+  calc.setExpression({id:"track_end",   latex:"x="+lv.xMax, color:"#6dfacc", lineWidth:2});
+  document.getElementById('raceScore').textContent = "—";
+  document.getElementById('raceStatus').textContent = lv.label+": f(x) through the pink band!";
+  document.getElementById('raceStatus').style.color = "#6b6b80";
+  document.getElementById('raceHUD').style.display = 'block';
+}
+
+function checkRaceScore(exprLatex) {
+  const lv = RACE_LEVELS[(raceLevel-1) % RACE_LEVELS.length];
+  let playerFn;
+  try { playerFn = Function('x','"use strict"; return '+latexToJS(exprLatex)); } catch(e) {
+    document.getElementById('raceStatus').textContent="Can't evaluate f(x)"; return;
+  }
+  let inCount = 0, steps = 300;
+  for (let i = 0; i <= steps; i++) {
+    const x = lv.xMin + (lv.xMax - lv.xMin)*(i/steps);
+    try { const fy=playerFn(x); if(Math.abs(fy-lv.fn(x))<=lv.band) inCount++; } catch(e) {}
+  }
+  const score = Math.round((inCount/(steps+1))*100);
+  document.getElementById('raceScore').textContent = score+"%";
+  if (score >= 88) {
+    document.getElementById('raceStatus').textContent = "🏁 Track cleared!";
+    document.getElementById('raceStatus').style.color = "#6dfacc";
+    document.getElementById('btnNext').style.display = '';
+  } else if (score >= 50) {
+    document.getElementById('raceStatus').textContent = score+"% — getting there!";
+    document.getElementById('raceStatus').style.color = "#fac86d";
+    document.getElementById('btnNext').style.display = 'none';
+  } else {
+    document.getElementById('raceStatus').textContent = score+"% — off track";
+    document.getElementById('raceStatus').style.color = "#f87171";
+    document.getElementById('btnNext').style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NEXT LEVEL
+// ═══════════════════════════════════════════════════════
+function nextLevel() {
+  document.getElementById('btnNext').style.display = 'none';
+  if (currentMode === 'race') {
+    raceLevel++;
+    if (raceLevel > RACE_LEVELS.length) { showWin("🏁 All Levels!","You navigated every race track."); return; }
+    clearGraph(); workspace.clear();
+  } else if (currentMode === 'ball') {
+    ballLevel++;
+    if (ballLevel > BALL_LEVELS.length) { showWin("⚽ Ball Master!","You guided the ball through every level."); return; }
+    clearGraph(); workspace.clear(); drawBallLevel();
+  } else if (currentMode === 'parametric') {
+    paramLevel++;
+    if (paramLevel > PARAMETRIC_LEVELS.length) { showWin("🏀 Bounce Master!","You planned every parametric path!"); return; }
+    clearGraph(); workspace.clear(); drawParametricLevel();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  WIN / MENU
+// ═══════════════════════════════════════════════════════
+function showWin(title, sub) {
+  document.getElementById('winTitle').textContent = title;
+  document.getElementById('winSub').textContent   = sub;
+  document.getElementById('winOverlay').classList.add('show');
+}
+function closeWin() { document.getElementById('winOverlay').classList.remove('show'); }
+function restartMode() { closeWin(); startMode(currentMode); }
+function goMenu() {
+  animationIntervals.forEach(i=>clearInterval(i)); animationIntervals=[];
+  physicsRunning=false; if(physicsRAF){cancelAnimationFrame(physicsRAF);physicsRAF=null;}
+  paramRunning=false; if(paramRAF){cancelAnimationFrame(paramRAF);paramRAF=null;}
+  // Clear the graph when leaving a mode
+  if (calc) { try { calc.setExpressions([]); } catch(e) {} }
+  document.getElementById('gameShell').style.display = 'none';
+  document.getElementById('mainMenu').style.display  = 'flex';
+  document.getElementById('raceHUD').style.display   = 'none';
+  document.getElementById('ballHUD').style.display   = 'none';
+  document.getElementById('parametricHUD').style.display = 'none';
+  closeWin(); currentMode = null;
+  document.getElementById('devBar').classList.remove('show');
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  BLOCK DEFINITIONS
+// ═══════════════════════════════════════════════════════
+Blockly.defineBlocksWithJsonArray([
+  {"type":"num",        "message0":"%1","args0":[{"type":"field_number","name":"N","value":0}],"output":null,"colour":220},
+  {"type":"pi",         "message0":"π", "output":null,"colour":220},
+  {"type":"e_const",    "message0":"e", "output":null,"colour":220},
+  {"type":"fours_four", "message0":"4", "output":null,"colour":55},
+  {"type":"var_get",    "message0":"get %1","args0":[{"type":"field_variable","name":"VAR","variable":"x"}],"output":null,"colour":330},
+  {"type":"var_set",    "message0":"set %1 = %2","args0":[{"type":"field_variable","name":"VAR","variable":"a"},{"type":"input_value","name":"VAL"}],"previousStatement":null,"nextStatement":null,"colour":330},
+  {"type":"neg",  "message0":"− %1",   "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"add",  "message0":"%1 + %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"sub",  "message0":"%1 − %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"mul",  "message0":"%1 × %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"div",  "message0":"%1 ÷ %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"pow",  "message0":"%1 ^ %2","args0":[{"type":"input_value","name":"BASE"},{"type":"input_value","name":"EXP"}],"output":null,"colour":220},
+  {"type":"abs",  "message0":"| %1 |", "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"sqrt", "message0":"√ %1",   "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"exp",  "message0":"e ^ %1", "args0":[{"type":"input_value","name":"EXP"}],"output":null,"colour":220},
+  {"type":"func","message0":"%1 ( %2 )","args0":[{"type":"field_dropdown","name":"FUNC","options":[["sin","sin"],["cos","cos"],["tan","tan"],["arcsin","arcsin"],["arccos","arccos"],["arctan","arctan"],["sec","sec"],["csc","csc"],["cot","cot"],["ln","ln"],["log","log"],["floor","floor"],["ceil","ceil"],["round","round"]]}  ,{"type":"input_value","name":"ARG"}],"output":null,"colour":160},
+  {"type":"sum", "message0":"Σ %1 from %2 to %3 of %4","args0":[{"type":"field_variable","name":"VAR","variable":"n"},{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"},{"type":"input_value","name":"EXPR"}],"output":null,"colour":160},
+  {"type":"prod","message0":"∏ %1 from %2 to %3 of %4","args0":[{"type":"field_variable","name":"VAR","variable":"n"},{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"},{"type":"input_value","name":"EXPR"}],"output":null,"colour":160},
+  {"type":"list_2",    "message0":"[ %1 , %2 ]",        "args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":65},
+  {"type":"list_3",    "message0":"[ %1 , %2 , %3 ]",   "args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"},{"type":"input_value","name":"C"}],"output":null,"colour":65},
+  {"type":"list_4",    "message0":"[ %1 , %2 , %3 , %4 ]","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"},{"type":"input_value","name":"C"},{"type":"input_value","name":"D"}],"output":null,"colour":65},
+  {"type":"list_range","message0":"[ %1 , ... , %2 ]",  "args0":[{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"}],"output":null,"colour":65},
+  {"type":"list_get",  "message0":"%1 [ %2 ]",          "args0":[{"type":"field_variable","name":"LIST","variable":"L"},{"type":"input_value","name":"INDEX"}],"output":null,"colour":65},
+  {"type":"animate","message0":"animate %1 from %2 to %3 in %4 steps","args0":[{"type":"field_variable","name":"VAR","variable":"a"},{"type":"field_number","name":"FROM","value":0},{"type":"field_number","name":"TO","value":6.28},{"type":"field_number","name":"STEPS","value":120}],"previousStatement":null,"nextStatement":null,"colour":260},
+  {"type":"func_def","message0":"define %1 ( %2 ) = %3","args0":[{"type":"field_input","name":"FUNCNAME","text":"f"},{"type":"field_input","name":"ARG","text":"x"},{"type":"input_value","name":"VAL"}],"previousStatement":null,"nextStatement":null,"colour":290},
+  {"type":"user_func_call","message0":"call %1 ( %2 )","args0":[{"type":"field_input","name":"FUNCNAME","text":"f"},{"type":"input_value","name":"ARG"}],"output":null,"colour":290},
+  {"type":"plot_y",         "message0":"plot  y = %1",                          "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_x",         "message0":"plot  x = %1",                          "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_implicit",  "message0":"plot  %1 = 0  (implicit)",              "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_polar",     "message0":"plot  r = %1  (polar)",                 "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_parametric","message0":"plot  x(t)= %1  y(t)= %2  (parametric)","args0":[{"type":"input_value","name":"X"},{"type":"input_value","name":"Y"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"race_plot","message0":"set  f(x) = %1","args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":350},
+  {"type":"piecewise","message0":"y = %1  for  %2 ≤ x ≤ %3","args0":[{"type":"input_value","name":"EXPR"},{"type":"field_number","name":"XMIN","value":-2},{"type":"field_number","name":"XMAX","value":2}],"previousStatement":null,"nextStatement":null,"colour":170},
+  // ── Parametric segment block ───────────────────────────────────────────
+  {"type":"param_segment","message0":"x(t)= %1  y(t)= %2  for  %3 ≤ t ≤ %4","args0":[{"type":"input_value","name":"XT"},{"type":"input_value","name":"YT"},{"type":"field_number","name":"TMIN","value":0},{"type":"field_number","name":"TMAX","value":1}],"previousStatement":null,"nextStatement":null,"colour":270,"tooltip":"Define a parametric path segment. The ball follows (x(t), y(t)) from t=TMIN to t=TMAX. Chain segments together to build a full route."},
+  {"type":"t_var","message0":"t","output":null,"colour":330,"tooltip":"The parameter t — use this as the input to your x(t) and y(t) expressions"},
+  {"type":"fours_const_def","message0":"let %1 = %2","args0":[{"type":"field_input","name":"NAME","text":"two"},{"type":"input_value","name":"VAL"}],"previousStatement":null,"nextStatement":null,"colour":290,"tooltip":"Define a named constant using fours. 4s inside count toward your total."},
+  {"type":"fours_const_get","message0":"use %1","args0":[{"type":"field_input","name":"NAME","text":"two"}],"output":null,"colour":290,"tooltip":"Use a constant you defined with 'let'."},
+  // ── Dynamic digit blocks (fours/fives/sixes) ─────────────────────────
+  {"type":"digit_single","message0":"D",    "output":null,"colour":55,"tooltip":"The digit (updates per mode)"},
+  {"type":"digit_double","message0":"DD",   "output":null,"colour":55,"tooltip":"Two-digit concatenation"},
+  {"type":"digit_triple","message0":"DDD",  "output":null,"colour":55,"tooltip":"Three-digit concatenation"},
+  {"type":"digit_quad",  "message0":"DDDD", "output":null,"colour":55,"tooltip":"Four-digit concatenation"},
+  {"type":"digit_p1",    "message0":".D",   "output":null,"colour":55,"tooltip":"0.D — counts as one digit"},
+  {"type":"digit_p2",    "message0":".DD",  "output":null,"colour":55,"tooltip":"0.DD — counts as two digits"},
+  {"type":"digit_fact",  "message0":"D!",   "output":null,"colour":55,"tooltip":"D! — counts as one digit"},
+  // ── New math blocks ───────────────────────────────────────────────
+  {"type":"factorial","message0":"%1 !","args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220,"tooltip":"Factorial: n!"},
+  {"type":"logbase", "message0":"log %1 ( %2 )","args0":[{"type":"input_value","name":"BASE"},{"type":"input_value","name":"ARG"}],"output":null,"colour":160,"tooltip":"Logarithm with custom base"},
+  {"type":"nthroot",  "message0":"%1 √ %2","args0":[{"type":"input_value","name":"N"},{"type":"input_value","name":"A"}],"output":null,"colour":220,"tooltip":"Nth root"},
+  {"type":"mod",      "message0":"%1 mod %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220,"tooltip":"Modulo (remainder)"},
+  // ── Four Fours special number blocks ─────────────────────────────
+  {"type":"fours_44",    "message0":"44",   "output":null,"colour":55,"tooltip":"The number 44 — counts as two 4s"},
+  {"type":"fours_444",   "message0":"444",  "output":null,"colour":55,"tooltip":"The number 444 — counts as three 4s"},
+  {"type":"fours_4444",  "message0":"4444", "output":null,"colour":55,"tooltip":"The number 4444 — counts as four 4s"},
+  {"type":"fours_p4",    "message0":".4",   "output":null,"colour":55,"tooltip":"0.4 — counts as one 4"},
+  {"type":"fours_p44",   "message0":".44",  "output":null,"colour":55,"tooltip":"0.44 — counts as two 4s"},
+  {"type":"fours_4f",    "message0":"4!",   "output":null,"colour":55,"tooltip":"4! = 24 — counts as one 4"},
+  // ── Enhanced list blocks ──────────────────────────────────────────
+  {"type":"list_length","message0":"length of %1","args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Number of elements in a list"},
+  {"type":"list_sum",   "message0":"sum of %1",   "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Sum all elements of a list"},
+  {"type":"list_min",   "message0":"min of %1",   "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Minimum element"},
+  {"type":"list_max",   "message0":"max of %1",   "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Maximum element"},
+  {"type":"list_mean",  "message0":"mean of %1",  "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Mean (average) of a list"},
+  {"type":"list_sort",  "message0":"sort %1",     "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Sort a list ascending"},
+  {"type":"list_unique","message0":"unique %1",   "args0":[{"type":"input_value","name":"L"}],"output":null,"colour":65,"tooltip":"Remove duplicates from list"},
+  // ── Plot inequality / shading ──────────────────────────────────────
+  {"type":"plot_ineq_le","message0":"shade  y ≤ %1","args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120,"tooltip":"Shade region below curve"},
+  {"type":"plot_ineq_ge","message0":"shade  y ≥ %1","args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120,"tooltip":"Shade region above curve"},
+  {"type":"plot_point",  "message0":"point  ( %1 , %2 )","args0":[{"type":"input_value","name":"X"},{"type":"input_value","name":"Y"}],"previousStatement":null,"nextStatement":null,"colour":120,"tooltip":"Plot a single point"}
+]);
+
+// ═══════════════════════════════════════════════════════
+//  TOOLBOXES
+// ═══════════════════════════════════════════════════════
+// ── Fours tier system ──────────────────────────────────────────────
+// foursTier: 0=basic, 1=unlocked powers, 2=unlocked trig/log, 3=all
+let foursTier = 0;
+
+function getFoursTierToolbox(mode) {
+  mode = mode || currentMode || 'fours';
+  const digit = (mode==='fives') ? 5 : (mode==='sixes') ? 6 : 4;
+  const digitBlock = `digit_${digit}`;
+  // basic math always available: + - × ÷ √ (and negation)
+  const basicOps = '<block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="sqrt"/>';
+  let tier1 = '', tier2 = '', tier3 = '';
+  if (foursTier >= 1) tier1 = '<block type="pow"/><block type="abs"/><block type="factorial"/><block type="nthroot"/>';
+  if (foursTier >= 2) tier2 = '<block type="func"/><block type="logbase"/><block type="mod"/><block type="exp"/><block type="pi"/><block type="e_const"/>';
+  if (foursTier >= 3) tier3 = '<block type="sum"/><block type="prod"/>';
+  
+  // Special concatenated forms based on digit
+  const d = digit;
+  const specials = `
+    <block type="digit_single"/>
+    <block type="digit_double"/>
+    <block type="digit_triple"/>
+    <block type="digit_quad"/>
+    <block type="digit_p1"/>
+    <block type="digit_p2"/>
+    <block type="digit_fact"/>
+  `;
+
+  return `<xml>
+    <category name="${d}️⃣ The ${d}s" colour="55">
+      ${specials}
+    </category>
+    <category name="➕ Math" colour="220">
+      ${basicOps}
+      ${tier1}
+      ${tier2}
+      ${tier3}
+    </category>
+    <category name="📦 Constants" colour="290">
+      <block type="fours_const_def"/>
+      <block type="fours_const_get"/>
+    </category>
+  </xml>`;
+}
+
+function updateTierBadges() {
+  const colors = ['rgba(124,109,250,.25)','rgba(250,200,109,.25)','rgba(109,250,204,.25)','rgba(250,109,154,.25)'];
+  const textCol = ['var(--accent)','#fac86d','var(--accent3)','var(--accent2)'];
+  ['tier0badge','tier1badge','tier2badge','tier3badge'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (i <= foursTier) {
+      el.style.background = colors[i];
+      el.style.color = textCol[i];
+    } else {
+      el.style.background = '#1a1a24';
+      el.style.color = '#333';
+    }
+  });
+}
+
+function checkFoursTierUnlock() {
+  const solved = Object.values(foursTargets).filter(v => v !== null).length;
+  const total = foursRangeMax - foursRangeMin + 1;
+  let newTier = 0;
+  if (solved >= Math.ceil(total * 0.3)) newTier = 1;
+  if (solved >= Math.ceil(total * 0.6)) newTier = 2;
+  if (solved >= Math.ceil(total * 0.9)) newTier = 3;
+
+  if (newTier > foursTier) {
+    foursTier = newTier;
+    const tierNames = [
+      '',
+      '🔓 Unlocked: Powers & Roots ( ^ , ! , ⁿ√ )',
+      '🔓 Unlocked: Trig functions, log, π, e',
+      '🔓 Unlocked: Summations Σ and products ∏'
+    ];
+    const fb = document.getElementById('foursFeedback');
+    fb.style.color = '#fac86d';
+    fb.textContent = tierNames[foursTier] + ' — new blocks added to the Math category!';
+    
+    // Reload toolbox without losing workspace content
+    const savedXml = Blockly.Xml.workspaceToDom(workspace);
+    workspace.dispose();
+    workspace = Blockly.inject(document.getElementById('blocklyDiv'), {
+      toolbox: getFoursTierToolbox(currentMode), theme: darkTheme,
+      scrollbars: true, trashcan: true, zoom: { controls: true, wheel: true, startScale: 0.9 }
+    });
+    if (currentMode==='fives'||currentMode==='sixes'||currentMode==='fours') updateDigitBlockLabels(foursDigit);
+    try { Blockly.Xml.domToWorkspace(savedXml, workspace); } catch(e) {}
+    updateTierBadges();   // update the colored badges under the header
+  }
+}
+
+// ── devUnlockTier also needs mode-aware toolbox ─
+function devUnlockTier(tier) {
+  if (tier > foursTier) {
+    foursTier = tier;
+    const savedXml = Blockly.Xml.workspaceToDom(workspace);
+    workspace.dispose();
+    workspace = Blockly.inject(document.getElementById('blocklyDiv'), {
+      toolbox: getFoursTierToolbox(currentMode), theme: darkTheme,
+      scrollbars: true, trashcan: true, zoom: { controls: true, wheel: true, startScale: 0.9 }
+    });
+    if (currentMode==='fives'||currentMode==='sixes'||currentMode==='fours') updateDigitBlockLabels(foursDigit);
+    try { Blockly.Xml.domToWorkspace(savedXml, workspace); } catch(e) {}
+    updateTierBadges();
+    const fb = document.getElementById('foursFeedback');
+    fb.style.color = '#7c6dfa';
+    fb.textContent = '🛠 Dev: unlocked to tier ' + tier;
+  }
+}
+
+const TOOLBOXES = {
+  freeplay:`<xml>
+    <category name="📈 Plot" colour="120"><block type="plot_y"/><block type="plot_x"/><block type="plot_polar"/><block type="plot_parametric"/><block type="plot_implicit"/><block type="plot_ineq_le"/><block type="plot_ineq_ge"/><block type="plot_point"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/><block type="var_set"/><block type="animate"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/><block type="factorial"/><block type="nthroot"/><block type="logbase"/><block type="mod"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/><block type="sum"/><block type="prod"/></category>
+    <category name="[ ] Lists" colour="65"><block type="list_2"/><block type="list_3"/><block type="list_4"/><block type="list_range"/><block type="list_get"/><block type="list_length"/><block type="list_sum"/><block type="list_min"/><block type="list_max"/><block type="list_mean"/><block type="list_sort"/><block type="list_unique"/></category>
+    <category name="ƒ User Funcs" colour="290"><block type="func_def"/><block type="user_func_call"/></category>
+  </xml>`,
+  race:`<xml>
+    <category name="🏎️  Plot f(x)" colour="350"><block type="race_plot"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/><block type="factorial"/><block type="logbase"/><block type="mod"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/></category>
+  </xml>`,
+  ball:`<xml>
+    <category name="⚽  Piecewise" colour="170"><block type="piecewise"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/><block type="factorial"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/></category>
+  </xml>`,
+  parametric:`<xml>
+    <category name="🏀 Path Segment" colour="270">
+      <block type="param_segment"/>
+    </category>
+    <category name="🔢 Parameter" colour="330">
+      <block type="t_var"/>
+      <block type="num"/>
+      <block type="pi"/>
+      <block type="e_const"/>
+    </category>
+    <category name="➕ Math" colour="220"><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/><block type="factorial"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+  </xml>`
+};
+
+// ═══════════════════════════════════════════════════════
+//  DARK THEME
+// ═══════════════════════════════════════════════════════
+const darkTheme = Blockly.Theme.defineTheme('darkTheme', {
+  componentStyles: {
+    toolboxBackgroundColour: '#13131a', toolboxForegroundColour: '#e8e8f0',
+    flyoutBackgroundColour:  '#1a1a24', flyoutForegroundColour:  '#e8e8f0',
+    flyoutOpacity: 1, scrollbarColour: '#313139',
+    insertionMarkerColour: '#7c6dfa', insertionMarkerOpacity: 0.3
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  TUTORIALS
+// ═══════════════════════════════════════════════════════
+const TUTORIALS = {
+  race: {
+    title: '🏎️ Race Course', color: 'var(--accent2)',
+    steps: [
+      { icon:'📊', text:'<strong>Goal:</strong> Build f(x) using blocks to fit inside the <strong style="color:#fa6d9a">pink band</strong>.' },
+      { icon:'🧱', text:'<strong>How:</strong> Drag <strong>set f(x)=</strong> from the toolbox, snap math blocks into it.' },
+      { icon:'▶', text:'<strong>Press Run</strong> to plot and score. <strong>88%+</strong> clears the level!' },
+      { icon:'💡', text:'<strong>Hint:</strong> Level 1 is a sine wave — use a <strong>sin(x)</strong> block.' },
+    ]
+  },
+  ball: {
+    title: '⚽ Ball & Goal', color: 'var(--accent3)',
+    steps: [
+      { icon:'🎯', text:'<strong>Goal:</strong> Build piecewise ramps to guide the ball from <strong style="color:#a78bfa">Start</strong> to <strong style="color:#6dfacc">Goal</strong>.' },
+      { icon:'🧱', text:'<strong>How:</strong> Use <strong>y=[expr] for [xmin]≤x≤[xmax]</strong> blocks for each ramp segment.' },
+      { icon:'▶', text:'<strong>Press Run</strong> to plot, then <strong>Launch</strong> to simulate physics!' },
+      { icon:'💡', text:'<strong>Hint:</strong> Level 1 — try <strong>y = -0.25x</strong> from <strong>x=-4</strong> to <strong>x=4</strong>.' },
+    ]
+  }
+};
+let tutorialSeen = {};
+function showTutorial(mode) {
+  if (tutorialSeen[mode]) return;
+  tutorialSeen[mode] = true;
+  const t = TUTORIALS[mode]; if (!t) return;
+  const card = document.getElementById('tutorialCard');
+  let inner = '<h2 style="color:'+t.color+'">'+t.title+'</h2>';
+  t.steps.forEach(function(s) {
+    inner += '<div class="tutorial-step"><div class="step-icon">'+s.icon+'</div><div class="step-text">'+s.text+'</div></div>';
+  });
+  inner += '<button class="btn btn-run" onclick="closeTutorial()" style="align-self:flex-end;margin-top:4px">Got it! Let\'s go \u2192</button>';
+  card.innerHTML = inner;
+  document.getElementById('tutorialOverlay').classList.add('show');
+}
+function closeTutorial() { document.getElementById('tutorialOverlay').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════
+//  START MODE
+// ═══════════════════════════════════════════════════════
+function startMode(mode) {
+  currentMode = mode;
+  document.getElementById('mainMenu').style.display  = 'none';
+  document.getElementById('gameShell').style.display = 'flex';
+
+  // Reset game state
+  foursRangeMin = 0; 
+  foursRangeMax = 9;
+  foursAliases = {};
+  foursTier = 0;
+  foursDigit = (mode==='fives') ? 5 : (mode==='sixes') ? 6 : 4;
+  foursCount = foursDigit;
+  initFoursTargets();
+  raceLevel=1; ballLevel=1; paramLevel=1;
+  physicsRunning=false; if(physicsRAF){cancelAnimationFrame(physicsRAF);physicsRAF=null;}
+  paramRunning=false; if(paramRAF){cancelAnimationFrame(paramRAF);paramRAF=null;}
+  paramSegments=[]; paramTrace=[];
+  animationIntervals=[]; exprIdMap={};
+
+  // Badge
+  const badge = document.getElementById('modeBadge');
+  badge.textContent = {fours:'Four Fours',fives:'Five Fives',sixes:'Six Sixes',race:'Race Course',ball:'Ball & Goal',freeplay:'Free Play',parametric:'Bounce Planner'}[mode];
+  badge.className   = 'mode-badge badge-'+mode;
+
+  // Toolbar visibility
+  const isFoursLike = (mode==='fours'||mode==='fives'||mode==='sixes');
+  document.getElementById('btnRun').style.display   = isFoursLike ? 'none' : '';
+  document.getElementById('btnClear').style.display = isFoursLike ? 'none' : '';
+  document.getElementById('btnCheck').style.display = isFoursLike ? '' : 'none';
+  document.getElementById('btnNext').style.display  = 'none';
+
+  // Layout
+  const area = document.getElementById('mainArea');
+  area.className = {freeplay:'layout-sandbox',fours:'layout-noGraph',fives:'layout-noGraph',sixes:'layout-noGraph',race:'layout-race',ball:'layout-ball',parametric:'layout-parametric'}[mode];
+
+  // Panel/calculator visibility
+  const isFoursLike2 = (mode==='fours'||mode==='fives'||mode==='sixes');
+  document.getElementById('sidePanel').style.display  = isFoursLike2 ? '' : 'none';
+  document.getElementById('calculator').style.display = isFoursLike2 ? 'none' : '';
+  document.getElementById('mathPanel').style.display  = mode==='parametric' ? '' : 'none';
+  document.getElementById('raceHUD').style.display    = 'none';
+  document.getElementById('ballHUD').style.display    = 'none';
+  document.getElementById('parametricHUD').style.display = 'none';
+
+  // Dispose + reinject Blockly
+  if (workspace) { workspace.dispose(); workspace = null; }
+  // Update digit block labels BEFORE inject so flyout renders correctly
+  if (mode==='fours'||mode==='fives'||mode==='sixes') updateDigitBlockLabels(foursDigit);
+  const toolboxXml = (mode === 'fours'||mode==='fives'||mode==='sixes') ? getFoursTierToolbox(mode) : TOOLBOXES[mode] || TOOLBOXES['freeplay'];
+  workspace = Blockly.inject(document.getElementById('blocklyDiv'), {
+    toolbox: toolboxXml, theme: darkTheme,
+    scrollbars: true, trashcan: true, zoom: {controls:true, wheel:true, startScale:0.9}
+  });
+
+  // Init/reset Desmos — always clear when switching modes
+  if (!calc) {
+    calc = Desmos.GraphingCalculator(document.getElementById('calculator'), {keypad:false, expressions:false, invertedColors:true});
+  } else {
+    try { calc.setExpressions([]); } catch(e) {}
+  }
+
+  // Remove any previous resize handler
+  if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+
+  if (mode === 'ball') {
+    resizeHandler = () => {
+      if (currentMode === 'ball') drawBallLevel();
+    };
+    window.addEventListener('resize', resizeHandler);
+  }
+  if (mode === 'parametric') {
+    resizeHandler = () => {
+      if (currentMode === 'parametric') drawParametricLevel();
+    };
+    window.addEventListener('resize', resizeHandler);
+  }
+
+  // Mode-specific init
+  if (mode==='fours'||mode==='fives'||mode==='sixes') buildFoursGrid(mode);
+  if (mode==='race')  { drawRaceTrack(); setTimeout(()=>showTutorial('race'), 400); }
+  if (mode==='ball')  { drawBallLevel(); setTimeout(()=>showTutorial('ball'), 400); }
+  if (mode==='parametric') { drawParametricLevel(); setTimeout(()=>showTutorial('parametric'), 400); }
+
+  // Update dev bar for new mode
+  updateDevBar();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BALL & GOAL – DESMOS RENDERING + PHYSICS (FIXED)
+// ═══════════════════════════════════════════════════════
+const BALL_LEVELS = [
+  // ── Tier 1: Tutorial ───────────────────────────────────────────────────────
+  {
+    label:"Level 1 – Gentle Slope",
+    hint:"A simple ramp: try y = 0.5x",
+    ballX:-4, ballY:1, goalX:4, goalY:-1,
+    obstacles:[], xR:[-5,5], yR:[-4,4]
+  },
+  {
+    label:"Level 2 – Flat Bridge",
+    hint:"A flat line y = 0 gets you across",
+    ballX:-4, ballY:2, goalX:4, goalY:0,
+    obstacles:[], xR:[-5,5], yR:[-3,5]
+  },
+  {
+    label:"Level 3 – Drop Zone",
+    hint:"Ball starts high — slope it down then flatten near the goal",
+    ballX:-4, ballY:3, goalX:3, goalY:-2,
+    obstacles:[], xR:[-5,5], yR:[-4,5]
+  },
+
+  // ── Tier 2: Obstacles ──────────────────────────────────────────────────────
+  {
+    label:"Level 4 – Low Wall",
+    hint:"There's a wall in the middle — go over or under it",
+    ballX:-4, ballY:1, goalX:4, goalY:1,
+    obstacles:[{x1:-0.5,x2:0.5,yLo:-3,yHi:0.5}],
+    xR:[-5,5], yR:[-4,5]
+  },
+  {
+    label:"Level 5 – Ceiling",
+    hint:"A ceiling blocks the top — keep your curve low through the gap",
+    ballX:-4, ballY:0, goalX:4, goalY:0,
+    obstacles:[{x1:-2,x2:2,yLo:1,yHi:4}],
+    xR:[-5,5], yR:[-3,5]
+  },
+  {
+    label:"Level 6 – Two Pillars",
+    hint:"Two walls with a gap — thread the needle",
+    ballX:-4, ballY:0, goalX:4, goalY:0,
+    obstacles:[{x1:-2.5,x2:-1.5,yLo:-4,yHi:0.8},{x1:1.5,x2:2.5,yLo:-4,yHi:0.8}],
+    xR:[-5,5], yR:[-4,4]
+  },
+
+  // ── Tier 3: Curves ─────────────────────────────────────────────────────────
+  {
+    label:"Level 7 – Valley",
+    hint:"Goal is at the bottom of a valley — a parabola like -x² works great",
+    ballX:-4, ballY:3, goalX:0, goalY:-3,
+    obstacles:[{x1:-4,x2:-0.6,yLo:-4,yHi:-0.5},{x1:0.6,x2:4,yLo:-4,yHi:-0.5}],
+    xR:[-5,5], yR:[-5,5]
+  },
+  {
+    label:"Level 8 – Staircase",
+    hint:"Three steps down — use multiple piecewise segments at different heights",
+    ballX:-4, ballY:3, goalX:4, goalY:-3,
+    obstacles:[
+      {x1:-2.2,x2:-1.8,yLo:-4,yHi:1.2},
+      {x1:0.3, x2:0.7, yLo:-4,yHi:-0.3},
+    ],
+    xR:[-5,5], yR:[-5,5]
+  },
+  {
+    label:"Level 9 – Zig-Zag",
+    hint:"Tight S-curve path — link short angled segments to snake through",
+    ballX:-4, ballY:3, goalX:4, goalY:-3,
+    obstacles:[
+      {x1:-3,x2:-1,yLo:0.5,yHi:4},
+      {x1:-1,x2:1, yLo:-4,yHi:-0.5},
+      {x1:1, x2:3, yLo:0.5,yHi:4},
+    ],
+    xR:[-5,5], yR:[-5,5]
+  },
+
+  // ── Tier 4: Precision ──────────────────────────────────────────────────────
+  {
+    label:"Level 10 – Pipe",
+    hint:"A narrow pipe — ceiling and floor both close in. Stay between y=0 and y=1",
+    ballX:-4, ballY:0.5, goalX:4, goalY:0.5,
+    obstacles:[
+      {x1:-4,x2:4,yLo:1.1,yHi:5},
+      {x1:-4,x2:4,yLo:-5,yHi:-0.1},
+    ],
+    xR:[-5,5], yR:[-3,4]
+  },
+  {
+    label:"Level 11 – The Bounce",
+    hint:"Goal is up high — use a steep slope to launch the ball into the upper pocket",
+    ballX:-4, ballY:-2, goalX:3, goalY:3,
+    obstacles:[
+      {x1:-1,x2:4,yLo:-3,yHi:1.5},
+    ],
+    xR:[-5,5], yR:[-4,5]
+  },
+  {
+    label:"Level 12 – Gauntlet",
+    hint:"The hardest yet — many walls, only one path. Plan each segment carefully",
+    ballX:-4, ballY:4, goalX:4, goalY:-4,
+    obstacles:[
+      {x1:-3,x2:-2,yLo:-5,yHi:2},
+      {x1:-1,x2:0, yLo:0, yHi:5},
+      {x1:0, x2:1, yLo:-5,yHi:-1},
+      {x1:2, x2:3, yLo:1, yHi:5},
+    ],
+    xR:[-5,5], yR:[-6,6]
+  },
+];
+
+// Helper to get current Desmos math bounds (safe)
+function getCurrentBounds() {
+  if (!calc) return { left: -5, right: 5, bottom: -3, top: 4 };
+  const state = calc.getState();
+  if (!state.graphpaperBounds) return { left: -5, right: 5, bottom: -3, top: 4 };
+  const xBounds = state.graphpaperBounds[0];
+  const yBounds = state.graphpaperBounds[1];
+  return {
+    left: xBounds.left,
+    right: xBounds.right,
+    bottom: yBounds.bottom,
+    top: yBounds.top
+  };
+}
+
+function buildPhysicsSegments() {
+  const tops = workspace.getTopBlocks(true).filter(b => b.type === 'piecewise');
+  segments = tops.map(b => {
+    const exprBlock = b.getInputTargetBlock("EXPR");
+    if (!exprBlock) return null;
+    const latex = parseExpr(exprBlock);
+    const xmin = parseFloat(b.getFieldValue("XMIN"));
+    const xmax = parseFloat(b.getFieldValue("XMAX"));
+    let fn = null, dfn = null;
+    try {
+      const js = latexToJS(latex);
+      fn = new Function('x', 'try { return ' + js + '; } catch(e) { return NaN; }');
+      if (fn) {
+        dfn = (x) => {
+          const h = 0.001;
+          try { return (fn(x + h) - fn(x - h)) / (2 * h); } catch(e) { return 0; }
+        };
+      }
+    } catch(e) { /* ignore */ }
+    return { fn, dfn, xmin, xmax, latex };
+  }).filter(s => s && s.fn);
+  document.getElementById('ballSegCount').textContent = segments.length;
+  const st = document.getElementById('ballStatus');
+  if (segments.length === 0) {
+    st.textContent = "⚙️ Add piecewise curves first!";
+    st.style.color = "#facc15";
+  } else {
+    st.textContent = "✅ Curves ready. Press Launch!";
+    st.style.color = "#6dfacc";
+  }
+}
+
+function getSurfaceY(x) {
+  for (const seg of segments) {
+    if (x >= seg.xmin && x <= seg.xmax) {
+      try {
+        const y = seg.fn(x);
+        if (isFinite(y)) return y;
+      } catch(e) {}
+    }
+  }
+  return null;
+}
+
+function getSurfaceSlope(x) {
+  for (const seg of segments) {
+    if (x >= seg.xmin && x <= seg.xmax && seg.dfn) {
+      try { return seg.dfn(x); } catch(e) {}
+    }
+  }
+  return 0;
+}
+
+function physicsStep(dt) {
+  if (!physicsRunning) return;
+
+  const g = -5.0;
+  const airFriction = 0.999;      // slightly less air drag
+  const groundFriction = 0.995;    // lower ground friction = more rolling
+
+  ballState.vy += g * dt;
+  ballState.vx *= airFriction;
+  ballState.x += ballState.vx * dt;
+  ballState.y += ballState.vy * dt;
+
+  const surf = getSurfaceY(ballState.x);
+  if (surf !== null && ballState.y - ballState.radius <= surf) {
+    ballState.y = surf + ballState.radius;
+    const slope = getSurfaceSlope(ballState.x);
+    let nx = -slope, ny = 1;
+    const len = Math.hypot(nx, ny);
+    if (len > 0.001) { nx /= len; ny /= len; }
+    const vdotn = ballState.vx * nx + ballState.vy * ny;
+    if (vdotn < 0) {
+      // Dynamic restitution based on impact speed
+      const speed = Math.abs(vdotn);
+      let restitution = 0.5 + Math.min(0.4, speed * 0.2);
+      restitution = Math.min(0.85, restitution);
+      ballState.vx = (ballState.vx - (1 + restitution) * vdotn * nx) * groundFriction;
+      ballState.vy = (ballState.vy - (1 + restitution) * vdotn * ny);
+    }
+    if (Math.abs(ballState.vy) < 0.1 && ballState.y - surf < 0.02) ballState.vy = 0;
+  }
+
+  const bounds = getCurrentBounds();
+  if (ballState.x - ballState.radius < bounds.left) {
+    ballState.x = bounds.left + ballState.radius;
+    ballState.vx = -ballState.vx * 0.7;
+  }
+  if (ballState.x + ballState.radius > bounds.right) {
+    ballState.x = bounds.right - ballState.radius;
+    ballState.vx = -ballState.vx * 0.7;
+  }
+  if (ballState.y - ballState.radius < bounds.bottom) {
+    ballState.y = bounds.bottom + ballState.radius;
+    ballState.vy = -ballState.vy * 0.55;
+  }
+  if (ballState.y + ballState.radius > bounds.top) {
+    ballState.y = bounds.top - ballState.radius;
+    ballState.vy = -ballState.vy * 0.5;
+  }
+
+  const dx = ballState.x - goalPos.x;
+  const dy = ballState.y - goalPos.y;
+  if (Math.hypot(dx, dy) < goalRadius + ballState.radius && !window._goalReached) {
+    window._goalReached = true;
+    physicsRunning = false;
+    if (physicsRAF) cancelAnimationFrame(physicsRAF);
+    const st = document.getElementById('ballStatus');
+    st.textContent = "🎉 GOAL! Level complete!";
+    st.style.color = "#6dfacc";
+    if (ballLevel >= BALL_LEVELS.length) {
+      showWin("⚽ Ball Master!", "You guided the ball through every level.");
+    } else {
+      document.getElementById('btnNext').style.display = '';
+    }
+    return;
+  }
+
+  // Rotation: moving right (positive vx) causes clockwise rotation (negative angle increment)
+  rotationAngle -= ballState.vx * dt * 5.0;
+}
+
+function updateDesmosBallVisual() {
+  if (!calc || !calc.setExpression) return;
+  const bx = ballState.x;
+  const by = ballState.y;
+  const r = ballState.radius;
+  const tipX = bx + r * Math.cos(rotationAngle);
+  const tipY = by + r * Math.sin(rotationAngle);
+
+  safeRemoveExpression(dynamicExpressions.ballFill);
+  safeRemoveExpression(dynamicExpressions.ballOutline);
+  safeRemoveExpression(dynamicExpressions.radiusLine);
+
+  // Filled circle (transparent)
+  const fillId = `ball_fill_${Date.now()}`;
+  calc.setExpression({
+    id: fillId,
+    latex: `(x-${bx})^2 + (y-${by})^2 \\le ${r * r}`,
+    color: "#a78bfa",
+    opacity: 0.35,
+    lineOpacity: 0
+  });
+
+  // Outline
+  const outlineId = `ball_outline_${Date.now()}`;
+  calc.setExpression({
+    id: outlineId,
+    latex: `(x-${bx})^2 + (y-${by})^2 = ${r * r}`,
+    color: "#c4b5fd",
+    lineWidth: 2.5,
+    opacity: 0.9
+  });
+
+  // Radius line as a piecewise linear segment
+  let lineLatex;
+  const dx = tipX - bx;
+  const dy = tipY - by;
+  if (Math.abs(dx) < 1e-8) {
+    // Vertical line
+    const xVal = bx;
+    const yMin = Math.min(by, tipY);
+    const yMax = Math.max(by, tipY);
+    lineLatex = `x=${xVal}\\left\\{${yMin}\\le y\\le ${yMax}\\right\\}`;
+  } else {
+    const slope = dy / dx;
+    const intercept = by - slope * bx;
+    const xMin = Math.min(bx, tipX);
+    const xMax = Math.max(bx, tipX);
+    lineLatex = `y=${slope}x+${intercept}\\left\\{${xMin}\\le x\\le ${xMax}\\right\\}`;
+  }
+
+  const lineId = `radius_line_${Date.now()}`;
+  calc.setExpression({
+    id: lineId,
+    latex: lineLatex,
+    color: "#facc15",
+    lineWidth: 2.5,
+    opacity: 0.9
+  });
+
+  dynamicExpressions = { ballFill: fillId, ballOutline: outlineId, radiusLine: lineId };
+}
+
+function animationLoop(now) {
+  if (!physicsRunning) return;
+  if (!lastTimestamp) lastTimestamp = now;
+  let dt = Math.min(0.025, (now - lastTimestamp) / 1000);
+  if (dt > 0.001) {
+    physicsStep(dt);
+    lastTimestamp = now;
+    updateDesmosBallVisual();
+  }
+  physicsRAF = requestAnimationFrame(animationLoop);
+}
+
+function launchBall() {
+  if (physicsRunning) resetPhysics();
+  buildPhysicsSegments();
+  if (segments.length === 0) {
+    document.getElementById('ballStatus').textContent = "❌ No piecewise curves! Add some first.";
+    return;
+  }
+
+  const lv = BALL_LEVELS[(ballLevel - 1) % BALL_LEVELS.length];
+  ballState = {
+    x: lv.ballX,
+    y: lv.ballY,
+    vx: 0,
+    vy: 0,
+    radius: 0.22
+  };
+  rotationAngle = 0;
+  physicsRunning = true;
+  window._goalReached = false;
+  lastTimestamp = 0;
+  if (physicsRAF) cancelAnimationFrame(physicsRAF);
+  physicsRAF = requestAnimationFrame(animationLoop);
+  document.getElementById('ballStatus').textContent = "🏃 Ball rolling...";
+}
+
+function resetPhysics() {
+  if (physicsRAF) cancelAnimationFrame(physicsRAF);
+  physicsRunning = false;
+
+  // Clean up Desmos expressions using safe helper
+  safeRemoveExpression(dynamicExpressions.ballFill);
+  safeRemoveExpression(dynamicExpressions.ballOutline);
+  safeRemoveExpression(dynamicExpressions.radiusLine);
+  dynamicExpressions = { ballFill: null, ballOutline: null, radiusLine: null };
+
+  const lv = BALL_LEVELS[(ballLevel - 1) % BALL_LEVELS.length];
+  ballState = {
+    x: lv.ballX,
+    y: lv.ballY,
+    vx: 0,
+    vy: 0,
+    radius: 0.22
+  };
+  updateDesmosBallVisual();
+  document.getElementById('ballStatus').textContent = "🔄 Reset. Press Launch!";
+}
+
+function drawBallLevel() {
+  if (!calc) return;
+  const lv = BALL_LEVELS[(ballLevel - 1) % BALL_LEVELS.length];
+
+  // Get the actual container dimensions (the calculator's parent)
+  const container = document.getElementById('calculator').parentElement;
+  const rect = container.getBoundingClientRect();
+  const aspectRatio = rect.width / rect.height;
+
+  // Desired world ranges from the level
+  const xMin = lv.xR[0];
+  const xMax = lv.xR[1];
+  const yMin = lv.yR[0];
+  const yMax = lv.yR[1];
+  const desiredXRange = xMax - xMin;
+  const desiredYRange = yMax - yMin;
+  const xCenter = (xMin + xMax) / 2;
+  const yCenter = (yMin + yMax) / 2;
+
+  // Compute world ranges that fit the container's aspect ratio
+  let worldXRange, worldYRange;
+  if (desiredXRange / desiredYRange > aspectRatio) {
+    // X range is the limiting factor
+    worldXRange = desiredXRange;
+    worldYRange = worldXRange / aspectRatio;
+  } else {
+    // Y range is the limiting factor
+    worldYRange = desiredYRange;
+    worldXRange = worldYRange * aspectRatio;
+  }
+
+  // Set bounds centered on the level's content
+  const left = xCenter - worldXRange / 2;
+  const right = xCenter + worldXRange / 2;
+  const bottom = yCenter - worldYRange / 2;
+  const top = yCenter + worldYRange / 2;
+  calc.setMathBounds({ left, right, bottom, top });
+
+  // Draw level elements
+  calc.setExpression({ id: "ball_start", latex: `(${lv.ballX},${lv.ballY})`, color: "#a78bfa", pointSize: 18, showLabel: true, label: "⬤ Start" });
+  calc.setExpression({ id: "ball_goal", latex: `(${lv.goalX},${lv.goalY})`, color: "#6dfacc", pointSize: 22, showLabel: true, label: "⚽ Goal" });
+  goalPos = { x: lv.goalX, y: lv.goalY };
+  calc.setExpression({ id: "goal_circle", latex: `(x-${lv.goalX})^2 + (y-${lv.goalY})^2 \\le ${goalRadius * goalRadius}`, color: "#6dfacc", opacity: 0.3, lineOpacity: 0 });
+  lv.obstacles.forEach((o, i) => {
+    calc.setExpression({ id: `obs_${i}`, latex: `${o.yLo} \\le y \\le ${o.yHi} \\left\\{${o.x1} \\le x \\le ${o.x2}\\right\\}`, color: "#f87171" });
+  });
+
+  document.getElementById('ballHUD').style.display = 'block';
+  const hintText = lv.hint ? lv.label + " — " + lv.hint : lv.label + ": build curves, then Launch!";
+  document.getElementById('ballStatus').textContent = hintText;
+  document.getElementById('ballStatus').style.color = "#6dfacc";
+  document.getElementById('ballSegCount').textContent = "0";
+  resetPhysics();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TUTORIALS (continued — parametric)
+// ═══════════════════════════════════════════════════════
+
+// Add parametric tutorial entry
+TUTORIALS.parametric = {
+  title: '🏀 Bounce Planner', color: '#c864fa',
+  steps: [
+    { icon:'📐', text:'<strong>Goal:</strong> Guide the ball from Start → Goal using <strong>piecewise parametric curves</strong> (x(t), y(t)). Each segment defines where the ball is at time t.' },
+    { icon:'🧱', text:'<strong>Build:</strong> Drag a <strong>Path Segment</strong> block. Set <strong>x(t)</strong> and <strong>y(t)</strong> using the <strong style="color:#c864fa">t</strong> block from the Parameter category. E.g. x=8·t−4, y=0, for t∈[0,1] goes straight across.' },
+    { icon:'📊', text:'The <strong>Math Panel</strong> on the right shows x′(t), y′(t), speed, dy/dx, and analyses every joint: a <em>position gap</em> means a bounce; <em>velocity gap</em> means a change in direction.' },
+    { icon:'🔗', text:'<strong>Chain segments:</strong> Set tmin of segment 2 = tmax of segment 1. A smooth join (gap≈0) rolls; a jump gap creates a bounce. Use this to plan ricochet paths!' },
+    { icon:'▶', text:'Press <strong>Run</strong> to plot the path on the graph, then <strong>🏀 Launch</strong> to animate the ball along your parametric route.' },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+//  PARAMETRIC BOUNCE GAME
+// ═══════════════════════════════════════════════════════
+
+const PARAMETRIC_LEVELS = [
+  {
+    label: "Level 1 – Straight Shot",
+    hint: "Hint: x(t) = 8t−4,  y(t) = 0,  t ∈ [0, 1]",
+    startX:-4, startY:0, goalX:4, goalY:0,
+    walls:[], xR:[-5,5], yR:[-3,3],
+    tTotal: 1
+  },
+  {
+    label: "Level 2 – Parabolic Arch",
+    hint: "Hint: x(t) = 6t−3,  y(t) = −4t²+4t,  t ∈ [0, 1]",
+    startX:-3, startY:0, goalX:3, goalY:0,
+    walls:[{x1:-0.5, x2:0.5, yLo:-5, yHi:0.8}],
+    xR:[-5,5], yR:[-1,4],
+    tTotal: 1
+  },
+  {
+    label: "Level 3 – Wall Bounce",
+    hint: "Two segments: approach (t 0→1), then bounce (t 1→2). At t=1, flip vx sign.",
+    startX:-4, startY:1.5, goalX:-1, goalY:-1.5,
+    walls:[{x:1, yLo:-5, yHi:5}],
+    xR:[-5,3], yR:[-3,4],
+    tTotal: 2
+  },
+  {
+    label: "Level 4 – High Lob",
+    hint: "Arc over the barrier: x(t)=8t−4, y(t)=sin(πt)·3, t∈[0,1]",
+    startX:-4, startY:0, goalX:4, goalY:0,
+    walls:[{x1:-0.8, x2:0.8, yLo:-5, yHi:2}],
+    xR:[-5,5], yR:[-1,5],
+    tTotal: 1
+  },
+  {
+    label: "Level 5 – Zigzag Corridor",
+    hint: "Three segments threading through the gaps. Each t-interval is one leg.",
+    startX:-4, startY:2, goalX:4, goalY:-2,
+    walls:[
+      {x1:-2, x2:-1, yLo:-5, yHi:0.5},
+      {x1: 1, x2: 2, yLo:0,  yHi: 5},
+    ],
+    xR:[-5,5], yR:[-4,4],
+    tTotal: 3
+  },
+  {
+    label: "Level 6 – Circular Arc",
+    hint: "Try x(t)=cos(πt)·4, y(t)=sin(πt)·3 for a smooth arc",
+    startX:4, startY:0, goalX:-4, goalY:0,
+    walls:[{x1:-1,x2:1, yLo:-5,yHi:-0.5}],
+    xR:[-5,5], yR:[-4,4],
+    tTotal: 1
+  },
+];
+
+
+let paramLevel = 1;
+let paramDynExpr = { ball:null, trace:null };
+let paramTrace = []; // history of (x,y) for trace
+
+function drawParametricLevel() {
+  if (!calc) return;
+  const lv = PARAMETRIC_LEVELS[(paramLevel-1) % PARAMETRIC_LEVELS.length];
+
+  // Set bounds
+  const container = document.getElementById('calculator').parentElement;
+  const rect = container.getBoundingClientRect();
+  const ar = rect.width / rect.height;
+  const xr = lv.xR[1]-lv.xR[0], yr = lv.yR[1]-lv.yR[0];
+  const xc = (lv.xR[0]+lv.xR[1])/2, yc = (lv.yR[0]+lv.yR[1])/2;
+  let wx = xr, wy = yr;
+  if (xr/yr > ar) { wy = wx/ar; } else { wx = wy*ar; }
+  calc.setMathBounds({left:xc-wx/2,right:xc+wx/2,bottom:yc-wy/2,top:yc+wy/2});
+
+  // Draw start/goal
+  calc.setExpression({id:"p_start", latex:`(${lv.startX},${lv.startY})`, color:"#a78bfa", pointSize:20, showLabel:true, label:"▶ Start"});
+  calc.setExpression({id:"p_goal",  latex:`(${lv.goalX},${lv.goalY})`,  color:"#c864fa", pointSize:24, showLabel:true, label:"🏀 Goal"});
+  calc.setExpression({id:"p_goalr", latex:`(x-${lv.goalX})^2+(y-${lv.goalY})^2\\le ${paramGoalR*paramGoalR}`, color:"#c864fa", opacity:0.25, lineOpacity:0});
+  paramGoal = {x:lv.goalX, y:lv.goalY};
+
+  // Draw walls
+  (lv.walls||[]).forEach((w,i)=>{
+    if (w.x !== undefined) {
+      // vertical wall
+      calc.setExpression({id:`p_wall_${i}`, latex:`x=${w.x}\\left\\{${w.yLo}\\le y\\le${w.yHi}\\right\\}`, color:"#f87171", lineWidth:4});
+    } else {
+      calc.setExpression({id:`p_wall_${i}`, latex:`${w.yLo}\\le y\\le${w.yHi}\\left\\{${w.x1}\\le x\\le${w.x2}\\right\\}`, color:"#f87171"});
+    }
+  });
+
+  // Init ball
+  paramBall = { x:lv.startX, y:lv.startY, vx:0, vy:0, t:0, segIdx:0 };
+  paramTrace = [];
+  paramDynExpr = {ball:null, trace:null};
+  updateParamBallVisual();
+
+  document.getElementById('parametricHUD').style.display = 'block';
+  // Allow pointer events so Launch/Reset buttons are clickable
+  document.getElementById('parametricHUD').style.pointerEvents = 'auto';
+
+  // Update HUD header
+  const lvLabel = document.getElementById('phud_level');
+  if (lvLabel) lvLabel.textContent = `🏀 ${lv.label.toUpperCase()}`;
+  const lvHint = document.getElementById('phud_hint');
+  if (lvHint) lvHint.textContent = lv.hint;
+
+  const hud = document.getElementById('parametricHUD');
+  hud.querySelector('.phud-val[id="phud_x"]') && (document.getElementById('phud_x').textContent='—');
+
+  log(`📐 ${lv.label}: ${lv.hint}`, '#c864fa');
+}
+
+function buildParamSegments() {
+  const tops = workspace.getTopBlocks(true).filter(b => b.type === 'param_segment');
+  paramSegments = tops.map(b => {
+    const xtBlock = b.getInputTargetBlock("XT");
+    const ytBlock = b.getInputTargetBlock("YT");
+    if (!xtBlock || !ytBlock) return null;
+    const xlatex = parseExpr(xtBlock);
+    const ylatex = parseExpr(ytBlock);
+    const tmin = parseFloat(b.getFieldValue("TMIN"));
+    const tmax = parseFloat(b.getFieldValue("TMAX"));
+    let xfn=null, yfn=null, dxfn=null, dyfn=null;
+    try {
+      const xjs = latexToJS(xlatex).replace(/\bt\b/g,'t');
+      const yjs = latexToJS(ylatex).replace(/\bt\b/g,'t');
+      xfn = new Function('t', 'try{return '+xjs+';}catch(e){return NaN;}');
+      yfn = new Function('t', 'try{return '+yjs+';}catch(e){return NaN;}');
+      const h = 0.0001;
+      dxfn = (t) => (xfn(t+h)-xfn(t-h))/(2*h);
+      dyfn = (t) => (yfn(t+h)-yfn(t-h))/(2*h);
+    } catch(e) {}
+    return {xfn, yfn, dxfn, dyfn, tmin, tmax, xlatex, ylatex};
+  }).filter(s => s && s.xfn && s.yfn);
+
+  // Sort by tmin
+  paramSegments.sort((a,b)=>a.tmin-b.tmin);
+
+  // Draw tangent vectors on Desmos at sample points
+  if (calc && paramSegments.length > 0) {
+    // Remove old tangent vectors
+    try {
+      const all = calc.getExpressions();
+      all.filter(e => e.id && e.id.startsWith('ptv_')).forEach(e => calc.removeExpression({id:e.id}));
+    } catch(e) {}
+
+    const tMin = paramSegments[0].tmin;
+    const tMax = paramSegments[paramSegments.length-1].tmax;
+    const nArrows = Math.min(12, Math.max(4, paramSegments.length * 4));
+    const ARROW_SCALE = 0.18;
+
+    for (let i = 0; i <= nArrows; i++) {
+      const t = tMin + (tMax - tMin) * (i / nArrows);
+      const seg = paramSegments.find(s => t >= s.tmin && t <= s.tmax) || paramSegments[paramSegments.length-1];
+      try {
+        const px = seg.xfn(t), py = seg.yfn(t);
+        const vx = seg.dxfn(t), vy = seg.dyfn(t);
+        const len = Math.hypot(vx, vy);
+        if (!isFinite(px)||!isFinite(py)||len<1e-6) continue;
+        const nx = vx/len*ARROW_SCALE, ny = vy/len*ARROW_SCALE;
+        const ex = px+nx, ey = py+ny;
+        // Arrow shaft
+        const arrowId = `ptv_${i}`;
+        const x1f = px.toFixed(4), y1f = py.toFixed(4);
+        const x2f = ex.toFixed(4), y2f = ey.toFixed(4);
+        const slope = Math.abs(nx) > 1e-6 ? ny/nx : Infinity;
+        let arrowLatex;
+        if (!isFinite(slope)) {
+          const ylo = Math.min(py, ey), yhi = Math.max(py, ey);
+          arrowLatex = `x=${x1f}\\left\\{${ylo.toFixed(4)}\\le y\\le${yhi.toFixed(4)}\\right\\}`;
+        } else {
+          const b = py - slope*px;
+          const xlo = Math.min(px, ex), xhi = Math.max(px, ex);
+          arrowLatex = `y=${slope.toFixed(6)}x+${b.toFixed(4)}\\left\\{${xlo.toFixed(4)}\\le x\\le${xhi.toFixed(4)}\\right\\}`;
+        }
+        calc.setExpression({id:arrowId, latex:arrowLatex, color:'#c864fa', lineWidth:1.5, opacity:0.5});
+        // Arrowhead dot
+        calc.setExpression({id:arrowId+'h', latex:`(${x2f},${y2f})`, color:'#c864fa', pointSize:5, opacity:0.6});
+      } catch(e) {}
+    }
+  }
+
+  log(`Built ${paramSegments.length} parametric segments`, '#c864fa');
+  return paramSegments;
+}
+
+function updateMathPanel() {
+  const segs = paramSegments;
+  document.getElementById('mp_segs').textContent = segs.length;
+
+  if (segs.length === 0) {
+    document.getElementById('mp_trange').textContent = '—';
+    document.getElementById('mp_joints_info').textContent = 'Add path segments first';
+    document.getElementById('mp_joints_list').innerHTML = '';
+    return;
+  }
+
+  const tMin = segs[0].tmin;
+  const tMax = segs[segs.length-1].tmax;
+  document.getElementById('mp_trange').textContent = `[${tMin.toFixed(2)}, ${tMax.toFixed(2)}]`;
+
+  // Evaluate at current t_input
+  evalAtT(document.getElementById('mp_t_input').value);
+
+  // Joint analysis
+  const joints = [];
+  for (let i=0; i<segs.length-1; i++) {
+    const A = segs[i], B = segs[i+1];
+    const tJ = A.tmax;
+    const ax = A.xfn(tJ), ay = A.yfn(tJ);
+    const bx = B.xfn(B.tmin), by = B.yfn(B.tmin);
+    const posGap = Math.hypot(ax-bx, ay-by);
+    const avx = A.dxfn(tJ), avy = A.dyfn(tJ);
+    const bvx = B.dxfn(B.tmin), bvy = B.dyfn(B.tmin);
+    const velGap = Math.hypot(avx-bvx, avy-bvy);
+    const speedA = Math.hypot(avx, avy), speedB = Math.hypot(bvx, bvy);
+    const angleA = Math.atan2(avy, avx) * 180 / Math.PI;
+    const angleB = Math.atan2(bvy, bvx) * 180 / Math.PI;
+    let angleDiff = angleB - angleA;
+    while (angleDiff > 180) angleDiff -= 360;
+    while (angleDiff < -180) angleDiff += 360;
+    joints.push({i, tJ, ax,ay, bx,by, posGap, avx,avy, bvx,bvy, velGap, speedA, speedB, angleDiff});
+  }
+
+  const listEl = document.getElementById('mp_joints_list');
+  if (joints.length === 0) {
+    document.getElementById('mp_joints_info').textContent = 'Only 1 segment — no joints';
+    listEl.innerHTML = '';
+    // Still show velocity profile for single segment
+    appendVelocityProfile(listEl, segs);
+    return;
+  }
+  document.getElementById('mp_joints_info').textContent = `${joints.length} joint${joints.length>1?'s':''} — click to inspect:`;
+  listEl.innerHTML = '';
+
+  joints.forEach(j => {
+    const isSmooth = j.posGap < 0.05;
+    const isBounce = !isSmooth;
+    const card = document.createElement('div');
+    card.className = 'joint-card ' + (isSmooth ? 'ok' : 'warn');
+    const type = isSmooth
+      ? (j.velGap < 0.1 ? '🟢 smooth (C¹)' : '🔵 position-continuous')
+      : '🔴 bounce/jump';
+    card.innerHTML = `
+      <div class="joint-title">t = ${j.tJ.toFixed(3)}  ${type}</div>
+      <div class="joint-row"><span>Pos gap |Δr|:</span><span style="color:${j.posGap<0.05?'var(--accent3)':'#f87171'}">${j.posGap.toFixed(4)}</span></div>
+      <div class="joint-row"><span>Vel gap |Δv|:</span><span style="color:${j.velGap<0.1?'var(--accent3)':'#fac86d'}">${j.velGap.toFixed(4)}</span></div>
+      <div class="joint-row"><span>Entry speed:</span><span>${j.speedA.toFixed(3)}</span></div>
+      <div class="joint-row"><span>Exit speed:</span><span>${j.speedB.toFixed(3)}</span></div>
+      <div class="joint-row"><span>Angle change:</span><span style="color:${Math.abs(j.angleDiff)<5?'var(--accent3)':'#fac86d'}">${j.angleDiff.toFixed(1)}°</span></div>
+      <div class="joint-row"><span>vx: ${j.avx.toFixed(3)} → ${j.bvx.toFixed(3)}</span><span></span></div>
+      <div class="joint-row"><span>vy: ${j.avy.toFixed(3)} → ${j.bvy.toFixed(3)}</span><span></span></div>
+    `;
+    // Click joint card to jump t-slider to that joint
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => {
+      document.getElementById('mp_t_input').value = j.tJ.toFixed(3);
+      evalAtT(j.tJ);
+    });
+    listEl.appendChild(card);
+  });
+
+  // Append velocity mini-profile
+  appendVelocityProfile(listEl, segs);
+}
+
+function appendVelocityProfile(container, segs) {
+  if (segs.length === 0) return;
+  const tMin = segs[0].tmin, tMax = segs[segs.length-1].tmax;
+  const N = 8;
+  const header = document.createElement('div');
+  header.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#444458;padding:8px 10px 4px';
+  header.textContent = 'Speed Profile';
+  container.appendChild(header);
+
+  const profileDiv = document.createElement('div');
+  profileDiv.style.cssText = 'padding:0 10px 10px;display:flex;flex-direction:column;gap:2px;';
+
+  for (let i = 0; i <= N; i++) {
+    const t = tMin + (tMax - tMin) * (i / N);
+    const seg = segs.find(s => t >= s.tmin && t <= s.tmax) || segs[segs.length-1];
+    const spd = Math.hypot(seg.dxfn(t), seg.dyfn(t));
+    const barW = Math.min(100, Math.max(2, spd * 20));
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-family:JetBrains Mono,monospace;font-size:9px;cursor:pointer';
+    row.innerHTML = `
+      <span style="color:#444;min-width:30px">t=${t.toFixed(2)}</span>
+      <div style="height:6px;width:${barW}px;background:linear-gradient(90deg,#7c6dfa,#c864fa);border-radius:3px"></div>
+      <span style="color:#888">${spd.toFixed(2)}</span>
+    `;
+    row.addEventListener('click', () => {
+      document.getElementById('mp_t_input').value = t.toFixed(3);
+      evalAtT(t);
+    });
+    profileDiv.appendChild(row);
+  }
+  container.appendChild(profileDiv);
+}
+
+function evalAtT(tStr) {
+  const t = parseFloat(tStr);
+  if (isNaN(t)) return;
+  // Find which segment contains t
+  let seg = paramSegments.find(s => t >= s.tmin && t <= s.tmax);
+  if (!seg && paramSegments.length > 0) {
+    if (t < paramSegments[0].tmin) seg = paramSegments[0];
+    else seg = paramSegments[paramSegments.length-1];
+  }
+  if (!seg) return;
+
+  const x  = seg.xfn(t), y  = seg.yfn(t);
+  const dx = seg.dxfn(t), dy = seg.dyfn(t);
+  const spd = Math.hypot(dx, dy);
+  const dydx = Math.abs(dx) > 1e-8 ? dy/dx : Infinity;
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+
+  // Second derivatives via finite difference on the first derivatives
+  const h = 0.001;
+  const d2x = (seg.dxfn(t+h) - seg.dxfn(t-h)) / (2*h);
+  const d2y = (seg.dyfn(t+h) - seg.dyfn(t-h)) / (2*h);
+  // Curvature κ = |x'y'' - y'x''| / (x'^2+y'^2)^(3/2)
+  const kappa = spd > 0.001 ? Math.abs(dx*d2y - dy*d2x) / Math.pow(spd, 3) : 0;
+
+  const fmt = v => isFinite(v) ? v.toFixed(4) : '∞';
+
+  document.getElementById('mp_xt').textContent   = fmt(x);
+  document.getElementById('mp_yt').textContent   = fmt(y);
+  const dxtEl = document.getElementById('mp_dxt');
+  dxtEl.textContent = fmt(dx);
+  dxtEl.className = 'math-val ' + (Math.abs(dx) > 0.01 ? 'good' : 'warn');
+  const dytEl = document.getElementById('mp_dyt');
+  dytEl.textContent = fmt(dy);
+  dytEl.className = 'math-val ' + (Math.abs(dy) > 0.01 ? 'good' : 'warn');
+  document.getElementById('mp_spd').textContent  = fmt(spd);
+  document.getElementById('mp_dydx').textContent = isFinite(dydx) ? fmt(dydx) : '∞ (vertical)';
+  document.getElementById('mp_ang').textContent  = ang.toFixed(2) + '°';
+
+  // Update curvature if element exists
+  const kappaEl = document.getElementById('mp_kappa');
+  if (kappaEl) kappaEl.textContent = kappa.toFixed(5);
+  const d2xEl = document.getElementById('mp_d2x');
+  if (d2xEl) d2xEl.textContent = fmt(d2x);
+  const d2yEl = document.getElementById('mp_d2y');
+  if (d2yEl) d2yEl.textContent = fmt(d2y);
+}
+
+function updateParamBallVisual() {
+  if (!calc || !paramBall) return;
+  const {x,y} = paramBall;
+  const r = 0.22;
+
+  // Remove old ball
+  if (paramDynExpr.ball) { try { calc.removeExpression({id:paramDynExpr.ball}); } catch(e){} }
+  const ballId = `pb_${Date.now()}`;
+  calc.setExpression({id:ballId, latex:`(x-${x})^2+(y-${y})^2\\le${r*r}`, color:"#c864fa", opacity:0.85, lineOpacity:0});
+  paramDynExpr.ball = ballId;
+
+  // Trace
+  if (paramTrace.length > 1) {
+    if (paramDynExpr.trace) { try { calc.removeExpression({id:paramDynExpr.trace}); } catch(e){} }
+    // Plot trace as a polygon / list of points
+    const xs = paramTrace.map(p=>p.x.toFixed(3)).join(',');
+    const ys = paramTrace.map(p=>p.y.toFixed(3)).join(',');
+    const traceId = `pt_${Date.now()}`;
+    calc.setExpression({id:traceId, latex:`(${xs},${ys})`, color:"#c864fa", lineWidth:1.5, pointSize:0, opacity:0.4});
+    paramDynExpr.trace = traceId;
+  }
+}
+
+function launchParametric() {
+  if (paramRunning) resetParametric();
+  buildParamSegments();
+  if (paramSegments.length === 0) {
+    log('❌ Add parametric path segments first!', '#f87171');
+    return;
+  }
+
+  const lv = PARAMETRIC_LEVELS[(paramLevel-1) % PARAMETRIC_LEVELS.length];
+  const seg0 = paramSegments[0];
+  const t0 = seg0.tmin;
+  paramBall = {
+    x: seg0.xfn(t0), y: seg0.yfn(t0),
+    vx: seg0.dxfn(t0), vy: seg0.dyfn(t0),
+    t: t0, segIdx: 0
+  };
+  paramTrace = [{x:paramBall.x, y:paramBall.y}];
+  paramRunning = true;
+  paramLastTime = 0;
+  window._paramGoalReached = false;
+  if (paramRAF) cancelAnimationFrame(paramRAF);
+  paramRAF = requestAnimationFrame(paramAnimLoop);
+  log('🏀 Ball launched along parametric path!', '#c864fa');
+}
+
+function resetParametric() {
+  paramRunning = false;
+  if (paramRAF) { cancelAnimationFrame(paramRAF); paramRAF = null; }
+  if (paramDynExpr.ball)  { try { calc.removeExpression({id:paramDynExpr.ball});  } catch(e){} }
+  if (paramDynExpr.trace) { try { calc.removeExpression({id:paramDynExpr.trace}); } catch(e){} }
+  paramDynExpr = {ball:null, trace:null};
+  paramTrace = [];
+
+  const lv = PARAMETRIC_LEVELS[(paramLevel-1) % PARAMETRIC_LEVELS.length];
+  paramBall = {x:lv.startX, y:lv.startY, vx:0, vy:0, t:0, segIdx:0};
+  updateParamBallVisual();
+
+  ['phud_x','phud_y','phud_vx','phud_vy','phud_spd'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+}
+
+function paramStep(dt) {
+  if (!paramRunning || paramSegments.length === 0) return;
+
+  // Speed of animation: t advances at a rate proportional to path speed
+  // We advance t at a fixed rate (e.g. 0.5 per second) to animate the path
+  const PARAM_SPEED = 0.4; // t units per second
+  const tPrev = paramBall.t;
+  let tNew = tPrev + PARAM_SPEED * dt;
+
+  // Find segment for tNew
+  let seg = paramSegments.find(s => tNew >= s.tmin && tNew <= s.tmax);
+  if (!seg) {
+    // Check if we've gone past all segments
+    const lastSeg = paramSegments[paramSegments.length-1];
+    if (tNew > lastSeg.tmax) {
+      // End of path — apply physics for remaining time
+      paramRunning = false;
+      log('📐 Path complete. Ball is now in free flight.', '#c864fa');
+      return;
+    }
+    seg = paramSegments[0];
+    tNew = seg.tmin;
+  }
+
+  paramBall.t = tNew;
+  paramBall.x = seg.xfn(tNew);
+  paramBall.y = seg.yfn(tNew);
+  paramBall.vx = seg.dxfn(tNew) * PARAM_SPEED;
+  paramBall.vy = seg.dyfn(tNew) * PARAM_SPEED;
+
+  // Record trace
+  paramTrace.push({x:paramBall.x, y:paramBall.y});
+  if (paramTrace.length > 300) paramTrace.shift();
+
+  // Update live HUD
+  document.getElementById('phud_x').textContent  = paramBall.x.toFixed(3);
+  document.getElementById('phud_y').textContent  = paramBall.y.toFixed(3);
+  document.getElementById('phud_vx').textContent = paramBall.vx.toFixed(3);
+  document.getElementById('phud_vy').textContent = paramBall.vy.toFixed(3);
+  document.getElementById('phud_spd').textContent = Math.hypot(paramBall.vx, paramBall.vy).toFixed(3);
+
+  // Update math panel t-input slider to follow ball
+  document.getElementById('mp_t_input').value = tNew.toFixed(3);
+  evalAtT(tNew);
+
+  // Check goal
+  if (!window._paramGoalReached) {
+    const dx = paramBall.x - paramGoal.x, dy = paramBall.y - paramGoal.y;
+    if (Math.hypot(dx,dy) < paramGoalR + 0.22) {
+      window._paramGoalReached = true;
+      paramRunning = false;
+      if (paramRAF) cancelAnimationFrame(paramRAF);
+      log('🎉 GOAL! Parametric path reached the target!', '#c864fa');
+      if (paramLevel >= PARAMETRIC_LEVELS.length) {
+        showWin('🏀 Bounce Master!', 'You planned every parametric bounce path!');
+      } else {
+        document.getElementById('btnNext').style.display = '';
+      }
+    }
+  }
+}
+
+function paramAnimLoop(now) {
+  if (!paramRunning) return;
+  if (!paramLastTime) paramLastTime = now;
+  const dt = Math.min(0.05, (now - paramLastTime)/1000);
+  paramLastTime = now;
+  if (dt > 0.001) {
+    paramStep(dt);
+    updateParamBallVisual();
+  }
+  paramRAF = requestAnimationFrame(paramAnimLoop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEV MODE
+// ═══════════════════════════════════════════════════════
+let devMode = false;
+
+function toggleDevMode() {
+  devMode = !devMode;
+  const btn = document.getElementById('devToggleBtn');
+  btn.classList.toggle('active', devMode);
+  updateDevBar();
+}
+
+function updateDevBar() {
+  const bar = document.getElementById('devBar');
+  if (!devMode || !currentMode) {
+    bar.classList.remove('show');
+    return;
+  }
+  bar.classList.add('show');
+
+  // Show/hide sections based on mode
+  document.getElementById('devFoursSection').style.display = (currentMode === 'fours'||currentMode==='fives'||currentMode==='sixes') ? 'flex' : 'none';
+  document.getElementById('devRaceSection').style.display  = currentMode === 'race'  ? 'flex' : 'none';
+  document.getElementById('devBallSection').style.display  = currentMode === 'ball'  ? 'flex' : 'none';
+  document.getElementById('devParamSection').style.display = currentMode === 'parametric' ? 'flex' : 'none';
+
+  // Populate race level dropdown
+  if (currentMode === 'race') {
+    const sel = document.getElementById('devRaceLevelSel');
+    sel.innerHTML = RACE_LEVELS.map((lv, i) =>
+      `<option value="${i+1}" ${raceLevel===i+1?'selected':''}>${lv.label}</option>`).join('');
+    sel.onchange = function() { devJumpRaceLevel(parseInt(this.value)); };
+  }
+
+  // Populate ball level dropdown
+  if (currentMode === 'ball') {
+    const sel = document.getElementById('devBallLevelSel');
+    sel.innerHTML = BALL_LEVELS.map((lv, i) =>
+      `<option value="${i+1}" ${ballLevel===i+1?'selected':''}>${lv.label}</option>`).join('');
+  }
+
+  // Populate parametric level dropdown
+  if (currentMode === 'parametric') {
+    const sel = document.getElementById('devParamLevelSel');
+    if (sel) {
+      sel.innerHTML = PARAMETRIC_LEVELS.map((lv, i) =>
+        `<option value="${i+1}" ${paramLevel===i+1?'selected':''}>${lv.label}</option>`).join('');
+    }
+  }
+}
+
+// ── Four Fours dev helpers ────────────────────────────
+function devSolveAll() {
+  // Mark every number in range as solved with a placeholder expression
+  for (let i = foursRangeMin; i <= foursRangeMax; i++) {
+    if (foursTargets[i] === null) foursTargets[i] = '\\text{dev}';
+  }
+  // Force all tiers to unlock first (checkFoursTierUnlock won't fire from
+  // buildFoursGrid when the range is fully solved, so we call it explicitly)
+  devUnlockTier(3);
+  buildFoursGrid();
+  const fb = document.getElementById('foursFeedback');
+  fb.style.color = '#7c6dfa';
+  fb.textContent = '🛠 Dev: all numbers auto-solved + all tiers unlocked!';
+}
+
+function devExpandRange() {
+  foursRangeMin = 0;
+  foursRangeMax = 1000;
+  initFoursTargets();
+  buildFoursGrid();
+  const fb = document.getElementById('foursFeedback');
+  fb.style.color = '#7c6dfa';
+  fb.textContent = '🛠 Dev: range expanded to 0–1000!';
+}
+
+// ── Race dev helpers ──────────────────────────────────
+function devJumpRaceLevel(lvl) {
+  raceLevel = lvl;
+  clearGraph(); workspace.clear();
+  drawRaceTrack();
+  document.getElementById('btnNext').style.display = 'none';
+}
+
+// ── Ball dev helpers ──────────────────────────────────
+function devJumpBallLevel(lvl) {
+  ballLevel = parseInt(lvl);
+  clearGraph(); workspace.clear();
+  drawBallLevel();
+  document.getElementById('btnNext').style.display = 'none';
+  updateDevBar(); // refresh dropdown selection
+}
+
+// Generic skip (works for race, ball, and parametric)
+function devSkipLevel() {
+  if (currentMode === 'race') {
+    raceLevel = Math.min(raceLevel + 1, RACE_LEVELS.length);
+    devJumpRaceLevel(raceLevel);
+    updateDevBar();
+  } else if (currentMode === 'ball') {
+    ballLevel = Math.min(ballLevel + 1, BALL_LEVELS.length);
+    devJumpBallLevel(ballLevel);
+  }
+
+  const tops = workspace.getTopBlocks(true).filter(b=>b.type==='piecewise');
+  document.getElementById('ballSegCount').textContent = tops.length;
+  const st = document.getElementById('ballStatus');
+  const lv = BALL_LEVELS[(ballLevel-1) % BALL_LEVELS.length];
+  st.textContent = lv.label + ": draw curves, then Launch!";
+  st.style.color = "#6dfacc";
+}
+
+function devJumpParamLevel(lvl) {
+  paramLevel = lvl;
+  resetParametric();
+  clearGraph(); workspace.clear();
+  drawParametricLevel();
+  document.getElementById('btnNext').style.display = 'none';
+  updateDevBar();
+}
+
+function devSkipParamLevel() {
+  paramLevel = Math.min(paramLevel + 1, PARAMETRIC_LEVELS.length);
+  devJumpParamLevel(paramLevel);
+}
+</script>
+</body>
+</html>
