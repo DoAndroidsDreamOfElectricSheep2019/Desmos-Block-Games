@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MathBlocks</title>
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+<script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
+
+:root {
+  --bg: #0f0f13;
+  --panel: #16161d;
+  --border: #2a2a3a;
+  --accent: #7c6dfa;
+  --accent2: #fa6d9a;
+  --accent3: #6dfacc;
+  --text: #e8e8f0;
+  --muted: #313139;
+  --log-bg: #0a0a10;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+/* ═══ MAIN MENU ═══ */
+#mainMenu {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.menu-title {
+  font-size: 52px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.menu-sub { font-size: 13px; color: #444458; margin-bottom: 52px; letter-spacing: .14em; text-transform: uppercase; }
+.mode-cards { display: flex; gap: 20px; }
+.mode-card {
+  width: 210px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+  padding: 26px 22px 22px; cursor: pointer;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+  display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden;
+}
+.mode-card::before { content:''; position:absolute; inset:0; opacity:0; transition:opacity .18s; border-radius:16px; }
+.mode-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.mode-card:hover::before { opacity: 1; }
+.mode-card.fours::before    { background: linear-gradient(135deg, rgba(124,109,250,.15), transparent); }
+.mode-card.race::before     { background: linear-gradient(135deg, rgba(250,109,154,.15), transparent); }
+.mode-card.ball::before     { background: linear-gradient(135deg, rgba(109,250,204,.15), transparent); }
+.mode-card.freeplay::before { background: linear-gradient(135deg, rgba(250,200,109,.15), transparent); }
+.mode-card.fours:hover    { border-color: var(--accent); }
+.mode-card.race:hover     { border-color: var(--accent2); }
+.mode-card.ball:hover     { border-color: var(--accent3); }
+.mode-card.freeplay:hover { border-color: #fac86d; }
+.mode-icon { font-size: 34px; }
+.mode-name { font-size: 17px; font-weight: 800; }
+.mode-card.fours    .mode-name { color: var(--accent); }
+.mode-card.race     .mode-name { color: var(--accent2); }
+.mode-card.ball     .mode-name { color: var(--accent3); }
+.mode-card.freeplay .mode-name { color: #fac86d; }
+.mode-desc { font-size: 11.5px; color: #555568; line-height: 1.65; }
+
+/* ═══ GAME SHELL ═══ */
+#gameShell { display: none; height: 100vh; flex-direction: column; }
+
+#toolbar {
+  height: 52px; display: flex; align-items: center; gap: 10px;
+  padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#toolbar .logo { font-size: 15px; font-weight: 800; letter-spacing: .04em; color: var(--text); margin-right: 6px; }
+#toolbar .logo span { color: var(--accent); }
+.mode-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 20px; margin-right: 6px;
+}
+.badge-fours    { background: rgba(124,109,250,.2); color: var(--accent); }
+.badge-race     { background: rgba(250,109,154,.2); color: var(--accent2); }
+.badge-ball     { background: rgba(109,250,204,.2); color: var(--accent3); }
+.badge-freeplay { background: rgba(250,200,109,.2); color: #fac86d; }
+
+.btn {
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover  { opacity: .88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-run    { background: var(--accent);  color: #fff; }
+.btn-clear  { background: var(--border);  color: var(--text); }
+.btn-check  { background: var(--accent3); color: #0a0a10; }
+.btn-next   { background: var(--accent2); color: #fff; }
+.btn-menu   { background: transparent; border: 1px solid var(--border); color: #6b6b80; font-size:11px; padding:5px 12px; }
+.spacer { flex: 1; }
+
+#mainArea { flex: 1; display: grid; overflow: hidden; min-height: 0; }
+#mainArea.layout-sandbox {
+  grid-template-columns: 440px 1fr; grid-template-rows: 1fr 160px;
+  grid-template-areas: "blocks graph" "console console";
+}
+#mainArea.layout-noGraph {
+  grid-template-columns: 440px 1fr; grid-template-rows: 1fr 160px;
+  grid-template-areas: "blocks panel" "console console";
+}
+#mainArea.layout-race {
+  grid-template-columns: 340px 1fr; grid-template-rows: 1fr 110px;
+  grid-template-areas: "blocks graph" "console console";
+}
+#mainArea.layout-ball {
+  grid-template-columns: 340px 1fr; grid-template-rows: 1fr 110px;
+  grid-template-areas: "blocks graph" "console console";
+}
+
+#blocklyDiv {
+  grid-area: blocks; border-right: 1px solid var(--border);
+  background: var(--panel); height: 100%; min-height: 0;
+}
+#calculator { grid-area: graph; height: 100%; min-height: 0; }
+#console {
+  grid-area: console; background: var(--log-bg); border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; padding: 10px 16px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+}
+#console .log-line { display: flex; gap: 10px; align-items: baseline; }
+#console .log-ts   { color: #2a2a3a; font-size: 10px; min-width: 52px; }
+
+/* ═══ FOUR FOURS PANEL ═══ */
+#sidePanel {
+  grid-area: panel; background: var(--panel); border-left: 1px solid var(--border);
+  padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+}
+.panel-title { font-size: 17px; font-weight: 800; color: var(--accent); }
+.panel-sub   { font-size: 11.5px; color: #5a5a6e; line-height: 1.65; }
+.targets-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.target-box {
+  background: var(--log-bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 6px; text-align: center;
+}
+.target-box .tnum  { font-size: 22px; font-weight: 800; color: var(--text); }
+.target-box .texpr { font-size: 9px; color: #444458; font-family: 'JetBrains Mono', monospace; margin-top:3px; min-height:14px; word-break:break-all; }
+.target-box.solved { border-color: var(--accent3); background: rgba(109,250,204,.07); }
+.target-box.solved .tnum { color: var(--accent3); }
+.target-box.active { border-color: var(--accent); background: rgba(124,109,250,.09); }
+#foursFeedback { font-size: 12.5px; font-family: 'JetBrains Mono', monospace; min-height: 20px; }
+.fours-progress { font-size: 11px; color: #444458; }
+.fours-progress span { color: var(--accent3); font-weight: 700; }
+
+/* ═══ HUD OVERLAYS ═══ */
+#raceHUD, #ballHUD {
+  display: none; position: absolute; top: 60px; right: 16px;
+  background: rgba(16,16,22,.94); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; z-index: 10; min-width: 175px; pointer-events: none;
+}
+.hud-label { color: #444458; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; margin-top: 6px; }
+.hud-label:first-child { margin-top: 0; }
+.hud-val   { font-size: 22px; font-weight: 800; line-height: 1.2; }
+.hud-status { font-size: 12px; margin-top: 4px; }
+#raceScore  { color: var(--accent2); }
+#ballSegCount { color: var(--accent3); }
+#ballStatus { font-size: 14px; color: var(--accent3); }
+
+/* ═══ BLOCKLY OVERRIDES ═══ */
+.blocklyTreeLabel {
+  color: #e8e8f0 !important; font-family: 'Syne', sans-serif !important;
+  font-size: 12px !important; font-weight: 700 !important;
+}
+.blocklyTreeRow { background: transparent !important; border-left: 3px solid transparent !important; }
+.blocklyTreeRow:hover { background: rgba(124,109,250,.12) !important; border-left: 3px solid var(--accent) !important; }
+.blocklyTreeSelected { background: rgba(124,109,250,.22) !important; border-left: 3px solid var(--accent) !important; }
+.blocklyToolboxDiv { background: #13131a !important; border-right: 1px solid #2a2a3a !important; }
+.blocklyFlyoutBackground { fill: #1a1a24 !important; }
+.blocklyScrollbarBackground { fill: transparent !important; }
+.blocklyToolboxCategory { background: transparent !important; }
+.blocklyToolboxCategory:hover { background: rgba(124,109,250,.12) !important; }
+.blocklyToolboxCategoryLabel {
+  color: #e8e8f0 !important; font-family: 'Syne', sans-serif !important;
+  font-size: 12px !important; font-weight: 700 !important;
+}
+
+/* ═══ WIN OVERLAY ═══ */
+#winOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(10,10,16,.88);
+  z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+#winOverlay.show { display: flex; }
+.win-title { font-size: 44px; font-weight: 800; text-align: center; }
+.win-sub   { font-size: 15px; color: #5a5a6e; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- MAIN MENU -->
+<div id="mainMenu">
+  <div class="menu-title">MathBlocks</div>
+  <div class="menu-sub">Build math · Solve puzzles</div>
+  <div class="mode-cards">
+    <div class="mode-card fours"    onclick="startMode('fours')">
+      <div class="mode-icon">4️⃣</div>
+      <div class="mode-name">Four Fours</div>
+      <div class="mode-desc">Use exactly four 4s and any operations to build every number from 0 to 9.</div>
+    </div>
+    <div class="mode-card race"     onclick="startMode('race')">
+      <div class="mode-icon">🏎️</div>
+      <div class="mode-name">Race Course</div>
+      <div class="mode-desc">Define f(x) with blocks to navigate your function through a generated track.</div>
+    </div>
+    <div class="mode-card ball"     onclick="startMode('ball')">
+      <div class="mode-icon">⚽</div>
+      <div class="mode-name">Ball &amp; Goal</div>
+      <div class="mode-desc">Stack piecewise function segments to guide the ball from start to the goal.</div>
+    </div>
+    <div class="mode-card freeplay" onclick="startMode('freeplay')">
+      <div class="mode-icon">🧮</div>
+      <div class="mode-name">Free Play</div>
+      <div class="mode-desc">Full sandbox — plot anything, animate variables, explore math freely.</div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME SHELL -->
+<div id="gameShell">
+  <div id="toolbar">
+    <div class="logo">math<span>blocks</span></div>
+    <span id="modeBadge" class="mode-badge"></span>
+    <button class="btn btn-run"   id="btnRun"   onclick="runBlocks()">▶ Run</button>
+    <button class="btn btn-clear" id="btnClear" onclick="clearGraph()">✕ Clear</button>
+    <button class="btn btn-check" id="btnCheck" onclick="checkFours()" style="display:none">✓ Check</button>
+    <button class="btn btn-next"  id="btnNext"  onclick="nextLevel()"  style="display:none">Next →</button>
+    <div class="spacer"></div>
+    <button class="btn btn-menu" onclick="goMenu()">← Menu</button>
+  </div>
+
+  <div id="mainArea" class="layout-sandbox" style="position:relative">
+    <div id="blocklyDiv"></div>
+    <div id="calculator"></div>
+
+    <!-- Four Fours side panel -->
+    <div id="sidePanel" style="display:none">
+      <div class="panel-title">Four Fours</div>
+      <div class="panel-sub">Use <strong>exactly four 4s</strong> and any math operations to make each number 0–9. Place one expression in the workspace and press Check.</div>
+      <div class="targets-grid" id="targetsGrid"></div>
+      <div id="foursFeedback"></div>
+      <div class="fours-progress">Solved: <span id="foursCount">0</span> / 10</div>
+    </div>
+
+    <!-- Race HUD -->
+    <div id="raceHUD">
+      <div class="hud-label">On-Track</div>
+      <div class="hud-val" id="raceScore">—</div>
+      <div class="hud-status" id="raceStatus">Plot f(x) to race!</div>
+    </div>
+
+    <!-- Ball HUD -->
+    <div id="ballHUD">
+      <div class="hud-label">Segments</div>
+      <div class="hud-val" id="ballSegCount">0</div>
+      <div class="hud-label">Status</div>
+      <div id="ballStatus">Build!</div>
+    </div>
+  </div>
+  <div id="console"></div>
+</div>
+
+<!-- WIN OVERLAY -->
+<div id="winOverlay">
+  <div class="win-title" id="winTitle">🎉 You Win!</div>
+  <div class="win-sub"   id="winSub"></div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button class="btn btn-run"  onclick="restartMode()">Play Again</button>
+    <button class="btn btn-menu" onclick="goMenu();closeWin()">← Menu</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let currentMode = null;
+let calc = null;
+let workspace = null;
+let animationIntervals = [];
+let userFunctions = {};
+let userLists = {};
+let exprIdMap = {};
+
+let foursTargets = {};
+let foursCurrentTarget = 0;
+
+let raceLevel = 1;
+let ballLevel = 1;
+
+function stableId(n) { if (!exprIdMap[n]) exprIdMap[n] = "expr_" + n; return exprIdMap[n]; }
+
+// ═══════════════════════════════════════════════════════
+//  LOGGING
+// ═══════════════════════════════════════════════════════
+function log(msg, color) {
+  color = color || "var(--text)";
+  const div = document.getElementById('console');
+  const line = document.createElement("div"); line.className = "log-line";
+  const ts = document.createElement("span");  ts.className = "log-ts";
+  const now = new Date();
+  ts.textContent = now.toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const txt = document.createElement("span"); txt.style.color = color; txt.textContent = msg;
+  line.appendChild(ts); line.appendChild(txt);
+  div.appendChild(line); div.scrollTop = div.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════
+function clearGraph() {
+  animationIntervals.forEach(i => clearInterval(i));
+  animationIntervals = [];
+
+  if (calc) {
+    const all = calc.getExpressions();
+    calc.removeExpressions(all); // <-- THIS is the reliable wipe
+  }
+
+  document.getElementById('console').innerHTML = "";
+  userFunctions = {};
+  userLists = {};
+  exprIdMap = {};
+
+  if (currentMode === 'race') drawRaceTrack();
+  if (currentMode === 'ball') drawBallLevel();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARSE EXPRESSION
+// ═══════════════════════════════════════════════════════
+function parseExpr(block) {
+  if (!block) return "0";
+  switch (block.type) {
+    case "num":         return block.getFieldValue("N") || "0";
+    case "var_get":     return block.getField("VAR").getText();
+    case "pi":          return "\\pi";
+    case "e_const":     return "e";
+    case "fours_four":  return "4";
+    case "neg":         return "(-" + parseExpr(block.getInputTargetBlock("A")) + ")";
+    case "add":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "+" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "sub":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "-" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "mul":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "*" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "div":         return "(" + parseExpr(block.getInputTargetBlock("A")) + "/" + parseExpr(block.getInputTargetBlock("B")) + ")";
+    case "pow":         return "(" + parseExpr(block.getInputTargetBlock("BASE")) + "^{" + parseExpr(block.getInputTargetBlock("EXP")) + "})";
+    case "abs":         return "\\left|" + parseExpr(block.getInputTargetBlock("A")) + "\\right|";
+    case "sqrt":        return "\\sqrt{" + parseExpr(block.getInputTargetBlock("A")) + "}";
+    case "exp":         return "e^{" + parseExpr(block.getInputTargetBlock("EXP")) + "}";
+    case "func": {
+      const fn = block.getField("FUNC").getText();
+      const arg = parseExpr(block.getInputTargetBlock("ARG"));
+      const trig = ["sin","cos","tan","sec","csc","cot","arcsin","arccos","arctan"];
+      if (trig.includes(fn)) return "\\" + fn + "\\left(" + arg + "\\right)";
+      if (fn === "ln")  return "\\ln\\left("  + arg + "\\right)";
+      if (fn === "log") return "\\log\\left(" + arg + "\\right)";
+      return "\\" + fn + "\\left(" + arg + "\\right)";
+    }
+    case "sum": {
+      const v = block.getField("VAR").getText();
+      return "\\sum_{" + v + "=" + parseExpr(block.getInputTargetBlock("FROM")) + "}^{" + parseExpr(block.getInputTargetBlock("TO")) + "}" + parseExpr(block.getInputTargetBlock("EXPR"));
+    }
+    case "prod": {
+      const v = block.getField("VAR").getText();
+      return "\\prod_{" + v + "=" + parseExpr(block.getInputTargetBlock("FROM")) + "}^{" + parseExpr(block.getInputTargetBlock("TO")) + "}" + parseExpr(block.getInputTargetBlock("EXPR"));
+    }
+    case "list_2":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "]";
+    case "list_3":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "," + parseExpr(block.getInputTargetBlock("C")) + "]";
+    case "list_4":    return "[" + parseExpr(block.getInputTargetBlock("A")) + "," + parseExpr(block.getInputTargetBlock("B")) + "," + parseExpr(block.getInputTargetBlock("C")) + "," + parseExpr(block.getInputTargetBlock("D")) + "]";
+    case "list_range": return "[" + parseExpr(block.getInputTargetBlock("FROM")) + ",...," + parseExpr(block.getInputTargetBlock("TO")) + "]";
+    case "list_get":  return block.getField("LIST").getText() + "[" + parseExpr(block.getInputTargetBlock("INDEX")) + "]";
+    case "user_func_call": return block.getField("FUNCNAME").getText() + "\\left(" + parseExpr(block.getInputTargetBlock("ARG")) + "\\right)";
+    default:
+      log("Unknown block: " + block.type, "#f97316"); return "0";
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RUN BLOCKS
+// ═══════════════════════════════════════════════════════
+function runBlocks() {
+  animationIntervals.forEach(i => clearInterval(i)); animationIntervals = [];
+  if (calc) calc.setExpressions([]);
+  document.getElementById('console').innerHTML = "";
+  userFunctions = {}; userLists = {}; exprIdMap = {};
+  if (currentMode === 'race') drawRaceTrack();
+  if (currentMode === 'ball') drawBallLevel();
+
+  const tops = workspace.getTopBlocks(true);
+  for (const b of tops) {
+    try {
+      switch (b.type) {
+        case "plot_y":  { const e = parseExpr(b.getInputTargetBlock("E")); log("plot y="+e,"#7c6dfa"); calc.setExpression({latex:"y="+e}); break; }
+        case "plot_x":  { const e = parseExpr(b.getInputTargetBlock("E")); log("plot x="+e,"#7c6dfa"); calc.setExpression({latex:"x="+e}); break; }
+        case "plot_implicit": { const e = parseExpr(b.getInputTargetBlock("E")); log("plot "+e+"=0","#7c6dfa"); calc.setExpression({latex:e+"=0"}); break; }
+        case "plot_polar":    { const e = parseExpr(b.getInputTargetBlock("E")); log("polar r="+e,"#7c6dfa"); calc.setExpression({latex:"r="+e}); break; }
+        case "plot_parametric": {
+          const xe = parseExpr(b.getInputTargetBlock("X")), ye = parseExpr(b.getInputTargetBlock("Y"));
+          log("param ("+xe+","+ye+")","#7c6dfa"); calc.setExpression({latex:"("+xe+","+ye+")"});
+          break;
+        }
+        case "var_set": {
+          const nm = b.getField("VAR").getText(), val = parseExpr(b.getInputTargetBlock("VAL"));
+          log("set "+nm+"="+val,"#6dfacc");
+          if (val.startsWith("[")) userLists[nm] = val;
+          calc.setExpression({id:stableId(nm), latex:nm+"="+val});
+          break;
+        }
+        case "animate": {
+          const vn = b.getField("VAR").getText(), fr = Number(b.getField("FROM").getText()), to = Number(b.getField("TO").getText()), st = Number(b.getField("STEPS").getText());
+          const aid = stableId(vn);
+          calc.setExpression({id:aid, latex:vn+"="+fr});
+          let step=0;
+          const iv = setInterval(()=>{ const v=fr+(to-fr)*(step/st); calc.setExpression({id:aid,latex:vn+"="+v}); step++; if(step>st) step=0; },50);
+          animationIntervals.push(iv);
+          log("animate "+vn,"#c084fc");
+          break;
+        }
+        case "func_def": {
+          const fn = b.getField("FUNCNAME").getText(), arg = b.getField("ARG").getText(), fe = parseExpr(b.getInputTargetBlock("VAL"));
+          userFunctions[fn] = {arg,fe};
+          log("define "+fn+"("+arg+")="+fe,"#6dfacc");
+          calc.setExpression({id:stableId(fn), latex:fn+"\\left("+arg+"\\right)="+fe});
+          break;
+        }
+        // Race
+        case "race_plot": {
+          const e = parseExpr(b.getInputTargetBlock("E"));
+          log("f(x)="+e,"#fa6d9a");
+          calc.setExpression({id:"player_fn", latex:"f\\left(x\\right)="+e, color:"#fa6d9a", lineWidth:3});
+          checkRaceScore(e);
+          break;
+        }
+        // Ball piecewise
+        case "piecewise": {
+          const e = parseExpr(b.getInputTargetBlock("EXPR"));
+          const xmin = b.getFieldValue("XMIN"), xmax = b.getFieldValue("XMAX");
+          const latex = "y="+e+"\\left\\{"+xmin+"\\le x\\le"+xmax+"\\right\\}";
+          log("segment "+latex,"#6dfacc");
+          calc.setExpression({latex, color:"#6dfacc", lineWidth:3});
+          break;
+        }
+      }
+    } catch(e) { log("Error: "+e.message,"#f87171"); }
+  }
+  if (currentMode === 'ball') setTimeout(checkBall, 400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  LATEX → JS (for numeric evaluation)
+// ═══════════════════════════════════════════════════════
+function latexToJS(s) {
+  return s
+    .replace(/\\pi/g,    'Math.PI')
+    .replace(/\\sqrt\{([^}]+)\}/g, 'Math.sqrt($1)')
+    .replace(/\\ln\\left\(([^)]+)\\right\)/g,   'Math.log($1)')
+    .replace(/\\log\\left\(([^)]+)\\right\)/g,  'Math.log10($1)')
+    .replace(/\\left\|([^|]+)\\right\|/g,        'Math.abs($1)')
+    .replace(/\\sin\\left\(([^)]+)\\right\)/g,   'Math.sin($1)')
+    .replace(/\\cos\\left\(([^)]+)\\right\)/g,   'Math.cos($1)')
+    .replace(/\\tan\\left\(([^)]+)\\right\)/g,   'Math.tan($1)')
+    .replace(/\\arcsin\\left\(([^)]+)\\right\)/g,'Math.asin($1)')
+    .replace(/\\arccos\\left\(([^)]+)\\right\)/g,'Math.acos($1)')
+    .replace(/\\arctan\\left\(([^)]+)\\right\)/g,'Math.atan($1)')
+    .replace(/\\floor\\left\(([^)]+)\\right\)/g, 'Math.floor($1)')
+    .replace(/\\ceil\\left\(([^)]+)\\right\)/g,  'Math.ceil($1)')
+    .replace(/\\round\\left\(([^)]+)\\right\)/g, 'Math.round($1)')
+    .replace(/\^\{([^}]+)\}/g, '**($1)')
+    .replace(/\^/g, '**')
+    .replace(/e\b/g, 'Math.E');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FOUR FOURS
+// ═══════════════════════════════════════════════════════
+function buildFoursGrid() {
+  const grid = document.getElementById('targetsGrid');
+  grid.innerHTML = '';
+  let solvedCount = 0;
+  for (let i = 0; i <= 9; i++) {
+    const box = document.createElement('div');
+    const solved = foursTargets[i] !== null;
+    const active = i === foursCurrentTarget && !solved;
+    if (solved) solvedCount++;
+    box.className = 'target-box' + (solved ? ' solved' : '') + (active ? ' active' : '');
+    box.id = 'tbox_' + i;
+    box.innerHTML = '<div class="tnum">'+i+'</div><div class="texpr">'+(foursTargets[i]||'')+'</div>';
+    grid.appendChild(box);
+  }
+  document.getElementById('foursCount').textContent = solvedCount;
+}
+
+function checkFours() {
+  const fb = document.getElementById('foursFeedback');
+  const tops = workspace.getTopBlocks(true);
+  if (tops.length === 0) { fb.style.color="#f87171"; fb.textContent="No blocks in workspace!"; return; }
+  if (tops.length > 1)   { fb.style.color="#f97316"; fb.textContent="Put exactly one expression in the workspace."; return; }
+
+  const latex = parseExpr(tops[0]);
+  const nFours = (latex.match(/4/g)||[]).length;
+  if (nFours !== 4) { fb.style.color="#f97316"; fb.textContent="Uses "+nFours+" fours — need exactly 4."; return; }
+
+  // Evaluate
+  let val = NaN;
+  try { val = Function('"use strict"; return ('+latexToJS(latex)+')')(); } catch(e) {}
+  if (isNaN(val)) { fb.style.color="#f87171"; fb.textContent="Couldn't evaluate — try a simpler form."; return; }
+
+  const rounded = Math.round(val * 10000) / 10000;
+  const asInt   = Math.round(rounded);
+  if (Math.abs(rounded - asInt) > 0.001 || asInt < 0 || asInt > 9) {
+    fb.style.color="#f97316"; fb.textContent="= "+rounded+" — not an integer 0–9."; return;
+  }
+  if (foursTargets[asInt] !== null) { fb.style.color="#f97316"; fb.textContent=asInt+" is already solved!"; return; }
+
+  foursTargets[asInt] = latex;
+  fb.style.color="#6dfacc"; fb.textContent="✓ "+asInt+" = "+latex+" — nice!";
+  workspace.clear();
+
+  // advance target
+  for (let i = 0; i <= 9; i++) { if (foursTargets[i] === null) { foursCurrentTarget = i; break; } }
+  buildFoursGrid();
+
+  if (Object.values(foursTargets).every(v => v !== null)) showWin("🎉 All Ten Numbers!", "You solved 0–9 with exactly four 4s each.");
+}
+
+// ═══════════════════════════════════════════════════════
+//  RACE COURSE
+// ═══════════════════════════════════════════════════════
+const RACE_LEVELS = [
+  { label:"Level 1", latex:"\\sin\\left(x\\right)",                              fn:x=>Math.sin(x),           xMin:-5, xMax:5, band:1.5 },
+  { label:"Level 2", latex:"(0.3*x^{2}-2)",                                      fn:x=>0.3*x*x-2,            xMin:-4, xMax:4, band:1.2 },
+  { label:"Level 3", latex:"\\cos\\left(2x\\right)+\\sin\\left(x\\right)",       fn:x=>Math.cos(2*x)+Math.sin(x), xMin:-4, xMax:4, band:1.0 },
+  { label:"Level 4", latex:"(x/2)+\\sin\\left(3x\\right)",                       fn:x=>x/2+Math.sin(3*x),    xMin:-3, xMax:3, band:0.9 },
+];
+
+function drawRaceTrack() {
+  if (!calc) return;
+  const lv = RACE_LEVELS[(raceLevel-1) % RACE_LEVELS.length];
+  const b = lv.band;
+  calc.setExpression({id:"track_upper", latex:"y="+lv.latex+"+"+b, color:"#fa6d9a", lineStyle:"DASHED", lineWidth:2});
+  calc.setExpression({id:"track_lower", latex:"y="+lv.latex+"-"+b, color:"#fa6d9a", lineStyle:"DASHED", lineWidth:2});
+  calc.setExpression({id:"track_fill",  latex:lv.latex+"-"+b+"\\le y\\le"+lv.latex+"+"+b, color:"#fa6d9a"});
+  calc.setExpression({id:"track_start", latex:"x="+lv.xMin, color:"#6dfacc", lineWidth:2});
+  calc.setExpression({id:"track_end",   latex:"x="+lv.xMax, color:"#6dfacc", lineWidth:2});
+  document.getElementById('raceScore').textContent = "—";
+  document.getElementById('raceStatus').textContent = lv.label+": f(x) through the pink band!";
+  document.getElementById('raceStatus').style.color = "#6b6b80";
+  document.getElementById('raceHUD').style.display = 'block';
+}
+
+function checkRaceScore(exprLatex) {
+  const lv = RACE_LEVELS[(raceLevel-1) % RACE_LEVELS.length];
+  let playerFn;
+  try { playerFn = Function('x','"use strict"; return '+latexToJS(exprLatex)); } catch(e) {
+    document.getElementById('raceStatus').textContent="Can't evaluate f(x)"; return;
+  }
+  let inCount = 0, steps = 300;
+  for (let i = 0; i <= steps; i++) {
+    const x = lv.xMin + (lv.xMax - lv.xMin)*(i/steps);
+    try { const fy=playerFn(x); if(Math.abs(fy-lv.fn(x))<=lv.band) inCount++; } catch(e) {}
+  }
+  const score = Math.round((inCount/(steps+1))*100);
+  document.getElementById('raceScore').textContent = score+"%";
+  if (score >= 88) {
+    document.getElementById('raceStatus').textContent = "🏁 Track cleared!";
+    document.getElementById('raceStatus').style.color = "#6dfacc";
+    document.getElementById('btnNext').style.display = '';
+  } else if (score >= 50) {
+    document.getElementById('raceStatus').textContent = score+"% — getting there!";
+    document.getElementById('raceStatus').style.color = "#fac86d";
+    document.getElementById('btnNext').style.display = 'none';
+  } else {
+    document.getElementById('raceStatus').textContent = score+"% — off track";
+    document.getElementById('raceStatus').style.color = "#f87171";
+    document.getElementById('btnNext').style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  BALL & GOAL
+// ═══════════════════════════════════════════════════════
+const BALL_LEVELS = [
+  { label:"Level 1", ballX:-4, ballY:0, goalX:4, goalY:2, obstacles:[], xR:[-5,5], yR:[-3,5] },
+  { label:"Level 2", ballX:-4, ballY:-1, goalX:4, goalY:3,
+    obstacles:[{x1:-1,x2:1,yLo:-0.5,yHi:0.2}], xR:[-5,5], yR:[-3,5] },
+  { label:"Level 3", ballX:-4, ballY:0, goalX:4, goalY:-1,
+    obstacles:[{x1:-2,x2:0,yLo:0.7,yHi:1.3},{x1:1,x2:3,yLo:-0.3,yHi:0.3}], xR:[-5,5], yR:[-3,5] },
+];
+
+function drawBallLevel() {
+  if (!calc) return;
+  const lv = BALL_LEVELS[(ballLevel-1) % BALL_LEVELS.length];
+  calc.setMathBounds({left:lv.xR[0], right:lv.xR[1], bottom:lv.yR[0], top:lv.yR[1]});
+  calc.setExpression({id:"ball_start", latex:"("+lv.ballX+","+lv.ballY+")", color:"#7c6dfa", pointSize:18, showLabel:true, label:"⬤ Start"});
+  calc.setExpression({id:"ball_goal",  latex:"("+lv.goalX+","+lv.goalY+")", color:"#6dfacc", pointSize:22, showLabel:true, label:"⚽ Goal"});
+  lv.obstacles.forEach((o,i)=>{
+    calc.setExpression({id:"obs_"+i, latex:o.yLo+"\\le y\\le"+o.yHi+"\\left\\{"+o.x1+"\\le x\\le"+o.x2+"\\right\\}", color:"#f87171"});
+  });
+  document.getElementById('ballHUD').style.display  = 'block';
+  document.getElementById('ballStatus').textContent = lv.label+": connect Start to Goal!";
+  document.getElementById('ballStatus').style.color = "#6dfacc";
+  document.getElementById('ballSegCount').textContent = "0";
+}
+
+function checkBall() {
+  const lv = BALL_LEVELS[(ballLevel-1) % BALL_LEVELS.length];
+  const tops = workspace.getTopBlocks(true).filter(b=>b.type==='piecewise');
+  document.getElementById('ballSegCount').textContent = tops.length;
+  if (tops.length === 0) return;
+
+  const segments = tops.map(b=>{
+    const ex = parseExpr(b.getInputTargetBlock("EXPR"));
+    const xmin = parseFloat(b.getFieldValue("XMIN")), xmax = parseFloat(b.getFieldValue("XMAX"));
+    let fn = null;
+    try { fn = Function('x','"use strict"; return '+latexToJS(ex)); } catch(e) {}
+    return {fn, xmin, xmax};
+  });
+
+  function evalPW(x) {
+    for (const s of segments) { if (s.fn && x >= s.xmin && x <= s.xmax) { try{return s.fn(x);}catch(e){} } }
+    return null;
+  }
+
+  const startY = evalPW(lv.ballX), goalY = evalPW(lv.goalX);
+  const startOk = startY !== null && Math.abs(startY - lv.ballY) < 0.35;
+  const goalOk  = goalY  !== null && Math.abs(goalY  - lv.goalY) < 0.35;
+
+  let obsHit = false;
+  for (const o of lv.obstacles) {
+    for (let i = 0; i <= 200; i++) {
+      const x = lv.xR[0]+(lv.xR[1]-lv.xR[0])*(i/200);
+      const y = evalPW(x);
+      if (y !== null && x >= o.x1 && x <= o.x2 && y >= o.yLo && y <= o.yHi) { obsHit=true; break; }
+    }
+    if (obsHit) break;
+  }
+
+  const st = document.getElementById('ballStatus');
+  if (obsHit)      { st.textContent="💥 Hit obstacle!"; st.style.color="#f87171"; }
+  else if (!startOk){ st.textContent="⬤ Missed start!";  st.style.color="#fac86d"; }
+  else if (!goalOk) { st.textContent="Almost! Reach the goal."; st.style.color="#fac86d"; }
+  else {
+    st.textContent="✓ Goal reached!"; st.style.color="#6dfacc";
+    setTimeout(()=>{
+      if (ballLevel >= BALL_LEVELS.length) showWin("⚽ Ball Master!","You guided the ball through every level.");
+      else { ballLevel++; document.getElementById('btnNext').style.display=''; }
+    }, 700);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NEXT LEVEL
+// ═══════════════════════════════════════════════════════
+function nextLevel() {
+  document.getElementById('btnNext').style.display = 'none';
+  if (currentMode === 'race') {
+    raceLevel++;
+    if (raceLevel > RACE_LEVELS.length) { showWin("🏁 All Levels!","You navigated every race track."); return; }
+    clearGraph(); workspace.clear();
+  } else if (currentMode === 'ball') {
+    clearGraph(); workspace.clear(); drawBallLevel();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  WIN / MENU
+// ═══════════════════════════════════════════════════════
+function showWin(title, sub) {
+  document.getElementById('winTitle').textContent = title;
+  document.getElementById('winSub').textContent   = sub;
+  document.getElementById('winOverlay').classList.add('show');
+}
+function closeWin() { document.getElementById('winOverlay').classList.remove('show'); }
+function restartMode() { closeWin(); startMode(currentMode); }
+function goMenu() {
+  animationIntervals.forEach(i=>clearInterval(i)); animationIntervals=[];
+  document.getElementById('gameShell').style.display = 'none';
+  document.getElementById('mainMenu').style.display  = 'flex';
+  document.getElementById('raceHUD').style.display   = 'none';
+  document.getElementById('ballHUD').style.display   = 'none';
+  closeWin(); currentMode = null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  BLOCK DEFINITIONS
+// ═══════════════════════════════════════════════════════
+Blockly.defineBlocksWithJsonArray([
+  {"type":"num",        "message0":"%1","args0":[{"type":"field_number","name":"N","value":0}],"output":null,"colour":220},
+  {"type":"pi",         "message0":"π", "output":null,"colour":220},
+  {"type":"e_const",    "message0":"e", "output":null,"colour":220},
+  {"type":"fours_four", "message0":"4", "output":null,"colour":55},
+  {"type":"var_get",    "message0":"get %1","args0":[{"type":"field_variable","name":"VAR","variable":"x"}],"output":null,"colour":330},
+  {"type":"var_set",    "message0":"set %1 = %2","args0":[{"type":"field_variable","name":"VAR","variable":"a"},{"type":"input_value","name":"VAL"}],"previousStatement":null,"nextStatement":null,"colour":330},
+  {"type":"neg",  "message0":"− %1",   "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"add",  "message0":"%1 + %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"sub",  "message0":"%1 − %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"mul",  "message0":"%1 × %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"div",  "message0":"%1 ÷ %2","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":220},
+  {"type":"pow",  "message0":"%1 ^ %2","args0":[{"type":"input_value","name":"BASE"},{"type":"input_value","name":"EXP"}],"output":null,"colour":220},
+  {"type":"abs",  "message0":"| %1 |", "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"sqrt", "message0":"√ %1",   "args0":[{"type":"input_value","name":"A"}],"output":null,"colour":220},
+  {"type":"exp",  "message0":"e ^ %1", "args0":[{"type":"input_value","name":"EXP"}],"output":null,"colour":220},
+  {"type":"func","message0":"%1 ( %2 )","args0":[{"type":"field_dropdown","name":"FUNC","options":[["sin","sin"],["cos","cos"],["tan","tan"],["arcsin","arcsin"],["arccos","arccos"],["arctan","arctan"],["sec","sec"],["csc","csc"],["cot","cot"],["ln","ln"],["log","log"],["floor","floor"],["ceil","ceil"],["round","round"]]}  ,{"type":"input_value","name":"ARG"}],"output":null,"colour":160},
+  {"type":"sum", "message0":"Σ %1 from %2 to %3 of %4","args0":[{"type":"field_variable","name":"VAR","variable":"n"},{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"},{"type":"input_value","name":"EXPR"}],"output":null,"colour":160},
+  {"type":"prod","message0":"∏ %1 from %2 to %3 of %4","args0":[{"type":"field_variable","name":"VAR","variable":"n"},{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"},{"type":"input_value","name":"EXPR"}],"output":null,"colour":160},
+  {"type":"list_2",    "message0":"[ %1 , %2 ]",        "args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"}],"output":null,"colour":65},
+  {"type":"list_3",    "message0":"[ %1 , %2 , %3 ]",   "args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"},{"type":"input_value","name":"C"}],"output":null,"colour":65},
+  {"type":"list_4",    "message0":"[ %1 , %2 , %3 , %4 ]","args0":[{"type":"input_value","name":"A"},{"type":"input_value","name":"B"},{"type":"input_value","name":"C"},{"type":"input_value","name":"D"}],"output":null,"colour":65},
+  {"type":"list_range","message0":"[ %1 , ... , %2 ]",  "args0":[{"type":"input_value","name":"FROM"},{"type":"input_value","name":"TO"}],"output":null,"colour":65},
+  {"type":"list_get",  "message0":"%1 [ %2 ]",          "args0":[{"type":"field_variable","name":"LIST","variable":"L"},{"type":"input_value","name":"INDEX"}],"output":null,"colour":65},
+  {"type":"animate","message0":"animate %1 from %2 to %3 in %4 steps","args0":[{"type":"field_variable","name":"VAR","variable":"a"},{"type":"field_number","name":"FROM","value":0},{"type":"field_number","name":"TO","value":6.28},{"type":"field_number","name":"STEPS","value":120}],"previousStatement":null,"nextStatement":null,"colour":260},
+  {"type":"func_def","message0":"define %1 ( %2 ) = %3","args0":[{"type":"field_input","name":"FUNCNAME","text":"f"},{"type":"field_input","name":"ARG","text":"x"},{"type":"input_value","name":"VAL"}],"previousStatement":null,"nextStatement":null,"colour":290},
+  {"type":"user_func_call","message0":"call %1 ( %2 )","args0":[{"type":"field_input","name":"FUNCNAME","text":"f"},{"type":"input_value","name":"ARG"}],"output":null,"colour":290},
+  {"type":"plot_y",         "message0":"plot  y = %1",                          "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_x",         "message0":"plot  x = %1",                          "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_implicit",  "message0":"plot  %1 = 0  (implicit)",              "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_polar",     "message0":"plot  r = %1  (polar)",                 "args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"plot_parametric","message0":"plot  x(t)= %1  y(t)= %2  (parametric)","args0":[{"type":"input_value","name":"X"},{"type":"input_value","name":"Y"}],"previousStatement":null,"nextStatement":null,"colour":120},
+  {"type":"race_plot","message0":"set  f(x) = %1","args0":[{"type":"input_value","name":"E"}],"previousStatement":null,"nextStatement":null,"colour":350},
+  {"type":"piecewise","message0":"y = %1  for  %2 ≤ x ≤ %3","args0":[{"type":"input_value","name":"EXPR"},{"type":"field_number","name":"XMIN","value":-2},{"type":"field_number","name":"XMAX","value":2}],"previousStatement":null,"nextStatement":null,"colour":170}
+]);
+
+// ═══════════════════════════════════════════════════════
+//  TOOLBOXES
+// ═══════════════════════════════════════════════════════
+const TOOLBOXES = {
+  freeplay:`<xml>
+    <category name="📈 Plot" colour="120"><block type="plot_y"/><block type="plot_x"/><block type="plot_polar"/><block type="plot_parametric"/><block type="plot_implicit"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/><block type="var_set"/><block type="animate"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/><block type="sum"/><block type="prod"/></category>
+    <category name="[ ] Lists" colour="65"><block type="list_2"/><block type="list_3"/><block type="list_4"/><block type="list_range"/><block type="list_get"/></category>
+    <category name="ƒ User Funcs" colour="290"><block type="func_def"/><block type="user_func_call"/></category>
+  </xml>`,
+  fours:`<xml>
+    <category name="4️⃣  The Four" colour="55"><block type="fours_four"/></category>
+    <category name="➕ Math" colour="220"><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+    <category name="π Constants" colour="220"><block type="pi"/><block type="e_const"/></category>
+  </xml>`,
+  race:`<xml>
+    <category name="🏎️  Plot f(x)" colour="350"><block type="race_plot"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/></category>
+  </xml>`,
+  ball:`<xml>
+    <category name="⚽  Piecewise" colour="170"><block type="piecewise"/></category>
+    <category name="➕ Math" colour="220"><block type="num"/><block type="pi"/><block type="e_const"/><block type="neg"/><block type="add"/><block type="sub"/><block type="mul"/><block type="div"/><block type="pow"/><block type="abs"/><block type="sqrt"/><block type="exp"/></category>
+    <category name="∫ Functions" colour="160"><block type="func"/></category>
+    <category name="🔢 Variables" colour="330"><block type="var_get"/></category>
+  </xml>`
+};
+
+// ═══════════════════════════════════════════════════════
+//  DARK THEME
+// ═══════════════════════════════════════════════════════
+const darkTheme = Blockly.Theme.defineTheme('darkTheme', {
+  componentStyles: {
+    toolboxBackgroundColour: '#13131a', toolboxForegroundColour: '#e8e8f0',
+    flyoutBackgroundColour:  '#1a1a24', flyoutForegroundColour:  '#e8e8f0',
+    flyoutOpacity: 1, scrollbarColour: '#313139',
+    insertionMarkerColour: '#7c6dfa', insertionMarkerOpacity: 0.3
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  START MODE
+// ═══════════════════════════════════════════════════════
+function startMode(mode) {
+  currentMode = mode;
+  document.getElementById('mainMenu').style.display  = 'none';
+  document.getElementById('gameShell').style.display = 'flex';
+
+  // Reset game state
+  foursTargets = {}; for (let i=0;i<=9;i++) foursTargets[i]=null; foursCurrentTarget=0;
+  raceLevel=1; ballLevel=1;
+  animationIntervals=[]; exprIdMap={};
+
+  // Badge
+  const badge = document.getElementById('modeBadge');
+  badge.textContent = {fours:'Four Fours',race:'Race Course',ball:'Ball & Goal',freeplay:'Free Play'}[mode];
+  badge.className   = 'mode-badge badge-'+mode;
+
+  // Toolbar visibility
+  document.getElementById('btnRun').style.display   = mode==='fours' ? 'none' : '';
+  document.getElementById('btnClear').style.display = mode==='fours' ? 'none' : '';
+  document.getElementById('btnCheck').style.display = mode==='fours' ? '' : 'none';
+  document.getElementById('btnNext').style.display  = 'none';
+
+  // Layout
+  const area = document.getElementById('mainArea');
+  area.className = {freeplay:'layout-sandbox',fours:'layout-noGraph',race:'layout-race',ball:'layout-ball'}[mode];
+
+  // Panel/calculator visibility
+  document.getElementById('sidePanel').style.display  = mode==='fours' ? '' : 'none';
+  document.getElementById('calculator').style.display = mode==='fours' ? 'none' : '';
+  document.getElementById('raceHUD').style.display    = 'none';
+  document.getElementById('ballHUD').style.display    = 'none';
+
+  // Dispose + reinject Blockly
+  if (workspace) { workspace.dispose(); workspace = null; }
+  workspace = Blockly.inject(document.getElementById('blocklyDiv'), {
+    toolbox: TOOLBOXES[mode], theme: darkTheme,
+    scrollbars: true, trashcan: true, zoom: {controls:true, wheel:true, startScale:0.9}
+  });
+
+  // Init/reset Desmos
+  if (!calc) {
+    calc = Desmos.GraphingCalculator(document.getElementById('calculator'), {keypad:false, expressions:false, invertedColors:true});
+  } else {
+    calc.setExpressions([]);
+  }
+
+  // Mode-specific init
+  if (mode==='fours') buildFoursGrid();
+  if (mode==='race')  drawRaceTrack();
+  if (mode==='ball')  drawBallLevel();
+}
+</script>
+</body>
+</html>
